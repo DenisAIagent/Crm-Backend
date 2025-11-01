@@ -1,5 +1,6 @@
 # ============================================
 # Stage 1: Build du client React/Vite
+# Force Railway cache invalidation - Build 2025-11-01
 # ============================================
 FROM node:20-alpine AS client-builder
 
@@ -20,6 +21,12 @@ RUN rm -rf dist .vite node_modules/.vite
 
 # Build du client (génère /app/client/dist)
 RUN npm run build
+
+# Debug: Lister les fichiers buildés pour vérifier les hashs
+RUN echo "=== DEBUG: Fichiers buildés ===" && \
+    ls -la dist/assets/ && \
+    echo "=== HTML content ===" && \
+    cat dist/index.html
 
 # ============================================
 # Stage 2: Image de production finale
