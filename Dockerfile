@@ -8,9 +8,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Copier les fichiers package.json
+# Copier les fichiers package.json et package-lock.json
 COPY package*.json ./
-COPY client/package*.json ./client/
+COPY client/package*.json client/package-lock.json ./client/
 
 # Installer les dépendances sans cache
 RUN npm ci --prefer-offline --no-audit --no-cache
