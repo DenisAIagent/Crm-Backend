@@ -137,10 +137,15 @@ if (process.env.NODE_ENV === 'production') {
 
   // Configuration explicite pour les assets avec cache et MIME types corrects
   app.use('/assets', express.static(path.join(clientDistPath, 'assets'), {
-    maxAge: '1y', // Cache 1 an pour les assets
-    etag: true,
-    lastModified: true,
+    maxAge: 0, // Pas de cache pour forcer le rechargement
+    etag: false,
+    lastModified: false,
     setHeaders: (res, filePath) => {
+      // Headers anti-cache agressifs
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      res.setHeader('Pragma', 'no-cache')
+      res.setHeader('Expires', '0')
+
       if (filePath.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript; charset=UTF-8')
       } else if (filePath.endsWith('.css')) {
