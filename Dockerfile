@@ -14,12 +14,14 @@ RUN cd client && npm install --include=dev
 # Build the application
 RUN npm run build
 
+# Make start.sh executable
+RUN chmod +x start.sh
+
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
 
 EXPOSE 3000
 
-# Make start.sh executable and start the application
-RUN chmod +x start.sh
+# Start the application
 CMD ["./start.sh"]
