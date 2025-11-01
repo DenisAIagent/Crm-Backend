@@ -7,7 +7,7 @@ WORKDIR /app
 # Variables d'environnement
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV CACHE_BUST=v3
+ENV CACHE_BUST=v4
 
 # Copier les fichiers package.json et package-lock.json
 COPY package*.json ./
@@ -15,7 +15,7 @@ COPY client/package*.json client/package-lock.json ./client/
 
 # Installer les dépendances sans cache
 RUN npm ci --prefer-offline --no-audit --no-cache
-RUN cd client && npm install --prefer-offline --no-audit
+RUN cd client && npm install --include=dev --prefer-offline --no-audit
 
 # Copier tout le code source
 COPY . .
