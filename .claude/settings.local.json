@@ -36,7 +36,8 @@
       "Bash(touch:*)",
       "Bash(pkill:*)",
       "Bash(timeout 30 npm run build)",
-      "Bash(git remote set-url:*)"
+      "Bash(git remote set-url:*)",
+      "Bash(chmod:*)"
     ],
     "deny": [],
     "ask": []
