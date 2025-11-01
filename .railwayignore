@@ -1,0 +1,2 @@
+# Force Railway to use our custom Dockerfile
+.nixpacks
