@@ -3,8 +3,9 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy all package files first
+# Copy all package files and start script
 COPY package*.json ./
+COPY start.sh ./
 COPY client/ ./client/
 
 # Install all dependencies (including dev for build)
