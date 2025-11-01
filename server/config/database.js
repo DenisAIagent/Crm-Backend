@@ -29,7 +29,7 @@ const connectDB = async () => {
 
       // Options de sécurité
       authSource: 'admin',
-      ssl: process.env.NODE_ENV === 'production',
+      ssl: false, // Railway MongoDB ne supporte pas SSL
 
       // Nom de l'application pour monitoring
       appName: 'MDMC-CRM'
