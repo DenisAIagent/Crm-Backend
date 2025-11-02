@@ -42,7 +42,17 @@
       "Bash(gh repo create:*)",
       "Bash(git remote remove:*)",
       "Bash(./generate-env.sh:*)",
-      "Bash(PORT=3003 NODE_ENV=production node server/server-fixed.js)"
+      "Bash(PORT=3003 NODE_ENV=production node server/server-fixed.js)",
+      "Bash(git fetch:*)",
+      "Bash(NODE_ENV=production node -e \"\nconsole.log(''Testing logger import...'');\ntry {\n  const { logger } = await import(''./server/utils/logger.js'');\n  logger.info(''Logger test successful!'');\n  console.log(''✅ Logger imported successfully in production mode'');\n} catch (error) {\n  console.error(''❌ Logger import failed:'', error.message);\n  process.exit(1);\n}\n\")",
+      "Bash(MONGODB_URI=\"mongodb://mongo:wDiVqBQFmtrIGLxUcptmqLhAGXILjshQ@shortline.proxy.rlwy.net:47910\" node update-user-credentials.js)",
+      "Bash(timeout:*)",
+      "Bash(MAILGUN_API_KEY=\"your_mailgun_key\" node test-email.js)",
+      "Bash(MAILGUN_API_KEY=\"your_mailgun_key\" MAILGUN_DOMAIN=\"your_domain\" node test-email.js)",
+      "Bash(git reset:*)",
+      "Bash(PORT=5002 node server/server-fixed.js)",
+      "Bash(PORT=5000 node server/server-fixed.js)",
+      "WebFetch(domain:github.com)"
     ],
     "deny": [],
     "ask": []

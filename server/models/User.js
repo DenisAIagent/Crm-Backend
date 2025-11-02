@@ -28,9 +28,26 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: [true, 'Le mot de passe est requis'],
+    required: function() {
+      return !this.googleId; // Le mot de passe n'est requis que si pas d'auth Google
+    },
     minlength: [8, 'Le mot de passe doit contenir au moins 8 caractères'],
     select: false // Ne pas inclure le mot de passe dans les requêtes par défaut
+  },
+
+  // OAuth et authentification externe
+  googleId: {
+    type: String,
+    sparse: true // Permet null/undefined mais unique si défini
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
+  profilePicture: {
+    type: String,
+    default: null
   },
 
   // Rôle et permissions
@@ -142,6 +159,7 @@ const userSchema = new mongoose.Schema({
 userSchema.index({ team: 1 })
 userSchema.index({ isActive: 1 })
 userSchema.index({ assignedPlatforms: 1 })
+userSchema.index({ googleId: 1 }, { sparse: true }) // Index sparse pour googleId
 
 // Virtuals
 userSchema.virtual('fullName').get(function() {
@@ -159,8 +177,8 @@ userSchema.virtual('conversionRate').get(function() {
 
 // Middleware pre-save pour hasher le mot de passe
 userSchema.pre('save', async function(next) {
-  // Ne hasher que si le mot de passe a été modifié
-  if (!this.isModified('password')) return next()
+  // Ne hasher que si le mot de passe a été modifié et qu'il existe
+  if (!this.isModified('password') || !this.password) return next()
 
   try {
     // Générer un salt et hasher le mot de passe

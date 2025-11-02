@@ -131,6 +131,9 @@ app.use('/api/integrations', integrationsRoutes)
 app.use('/api/audit', auditRoutes)
 app.use('/api/webhooks', webhooksRoutes)
 
+// Route alternative pour Google OAuth (compatibilité avec votre config Google Console)
+app.use('/auth', authRoutes)
+
 // Middleware global pour désactiver le cache sur Railway
 if (process.env.NODE_ENV === 'production') {
   app.use((req, res, next) => {

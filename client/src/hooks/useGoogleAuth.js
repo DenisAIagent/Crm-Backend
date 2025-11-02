@@ -18,12 +18,77 @@ export function useGoogleAuth() {
       const code = urlParams.get('code')
       const state = urlParams.get('state')
       const error = urlParams.get('error')
+      const success = urlParams.get('success')
+      const token = urlParams.get('token')
+      const userParam = urlParams.get('user')
+
+      // Si retour direct avec succès depuis le backend
+      if (success === 'true' && token && userParam) {
+        setIsLoading(true)
+
+        try {
+          const userData = JSON.parse(decodeURIComponent(userParam))
+
+          // Connecter l'utilisateur directement
+          const loginResult = await login({
+            googleToken: token,
+            user: userData
+          })
+
+          if (loginResult.success) {
+            // Analytics tracking
+            if (window.gtag) {
+              window.gtag('event', 'login', {
+                event_category: 'authentication',
+                event_label: 'google_oauth',
+                user_id: userData?.id
+              })
+            }
+
+            toast.success(`Connexion Google réussie ! Bienvenue ${userData.firstName}`, {
+              duration: 3000
+            })
+
+            // Rediriger vers le dashboard
+            window.history.replaceState({}, document.title, '/dashboard')
+          } else {
+            throw new Error(loginResult.error || 'Erreur lors de la connexion')
+          }
+
+        } catch (error) {
+          console.error('Google OAuth direct callback error:', error)
+          setError('Erreur lors de la connexion Google')
+          toast.error('Erreur lors de la connexion Google')
+        } finally {
+          setIsLoading(false)
+          // Nettoyer l'URL
+          window.history.replaceState({}, document.title, window.location.pathname)
+        }
+        return
+      }
 
       // Si on a une erreur OAuth
       if (error) {
         console.error('OAuth error:', error)
-        setError('Erreur lors de la connexion Google')
-        toast.error('Connexion Google annulée ou échouée')
+        let errorMessage = 'Erreur lors de la connexion Google'
+
+        switch (error) {
+          case 'oauth_error':
+            errorMessage = 'Connexion Google annulée ou échouée'
+            break
+          case 'missing_params':
+            errorMessage = 'Paramètres d\'authentification manquants'
+            break
+          case 'invalid_code':
+            errorMessage = 'Code d\'autorisation invalide'
+            break
+          case 'server_error':
+            errorMessage = 'Erreur serveur lors de l\'authentification'
+            break
+        }
+
+        setError(errorMessage)
+        toast.error(errorMessage)
 
         // Nettoyer l'URL
         window.history.replaceState({}, document.title, window.location.pathname)

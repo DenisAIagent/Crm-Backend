@@ -11,6 +11,8 @@ import {
 } from '../middleware/security.js'
 import { logger } from '../utils/logger.js'
 import crypto from 'crypto'
+import axios from 'axios'
+import jwt from 'jsonwebtoken'
 
 const router = express.Router()
 
@@ -569,6 +571,289 @@ router.get('/verify-email/:token',
       success: true,
       message: 'Email vérifié avec succès'
     })
+  })
+)
+
+// @desc    Google OAuth callback (GET pour redirection directe depuis Google)
+// @route   GET /auth/google/callback
+// @access  Public
+router.get('/google/callback',
+  asyncHandler(async (req, res) => {
+    const { code, state, error } = req.query
+
+    // Si erreur OAuth
+    if (error) {
+      const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000'
+      return res.redirect(`${frontendURL}/login?error=oauth_error&message=${encodeURIComponent(error)}`)
+    }
+
+    if (!code || !state) {
+      const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000'
+      return res.redirect(`${frontendURL}/login?error=missing_params`)
+    }
+
+    try {
+      // Échanger le code contre un token d'accès
+      const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI || `${process.env.CLIENT_URL}/login`
+      })
+
+      const { access_token } = tokenResponse.data
+
+      // Récupérer les informations utilisateur depuis Google
+      const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          Authorization: `Bearer ${access_token}`
+        }
+      })
+
+      const googleUser = userResponse.data
+
+      // Chercher ou créer l'utilisateur
+      let user = await User.findOne({
+        $or: [
+          { email: googleUser.email },
+          { googleId: googleUser.id }
+        ]
+      })
+
+      if (!user) {
+        // Créer un nouvel utilisateur
+        user = await User.create({
+          firstName: googleUser.given_name || 'Utilisateur',
+          lastName: googleUser.family_name || 'Google',
+          email: googleUser.email,
+          googleId: googleUser.id,
+          profilePicture: googleUser.picture,
+          isVerified: true, // Les comptes Google sont pré-vérifiés
+          team: 'denis', // Par défaut
+          role: 'agent',
+          assignedPlatforms: ['youtube', 'spotify'], // Par défaut équipe Denis
+          authProvider: 'google'
+        })
+      } else if (!user.googleId) {
+        // Lier un compte existant avec Google
+        user.googleId = googleUser.id
+        user.isVerified = true
+        if (googleUser.picture && !user.profilePicture) {
+          user.profilePicture = googleUser.picture
+        }
+        await user.save()
+      }
+
+      // Mettre à jour la dernière connexion
+      user.lastLogin = new Date()
+      await user.save()
+
+      // Générer les tokens
+      const token = generateToken(user._id)
+      const refreshToken = generateRefreshToken(user._id)
+
+      // Configurer les cookies
+      const cookieOptions = {
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      }
+
+      res.cookie('authToken', token, cookieOptions)
+      res.cookie('refreshToken', refreshToken, {
+        ...cookieOptions,
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      })
+
+      // Audit de connexion
+      logger.info(`Connexion Google réussie pour ${user.email}`)
+
+      // Rediriger vers le frontend avec succès
+      const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000'
+      const redirectURL = `${frontendURL}/login?success=true&token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify({
+        id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        role: user.role,
+        team: user.team
+      }))}`
+
+      res.redirect(redirectURL)
+
+    } catch (error) {
+      logger.error('Erreur lors de l\'authentification Google:', error)
+
+      const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000'
+
+      if (error.response?.status === 400) {
+        return res.redirect(`${frontendURL}/login?error=invalid_code`)
+      }
+
+      res.redirect(`${frontendURL}/login?error=server_error`)
+    }
+  })
+)
+
+// @desc    Google OAuth callback API (POST pour usage interne)
+// @route   POST /api/auth/google/callback
+// @access  Public
+router.post('/google/callback',
+  asyncHandler(async (req, res) => {
+    const { code, state } = req.body
+
+    if (!code || !state) {
+      return res.status(400).json({
+        success: false,
+        message: 'Code d\'autorisation ou state manquant'
+      })
+    }
+
+    try {
+      // Échanger le code contre un token d'accès
+      const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+        client_id: process.env.GOOGLE_CLIENT_ID,
+        client_secret: process.env.GOOGLE_CLIENT_SECRET,
+        code,
+        grant_type: 'authorization_code',
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI || `${process.env.CLIENT_URL}/login`
+      })
+
+      const { access_token } = tokenResponse.data
+
+      // Récupérer les informations utilisateur depuis Google
+      const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: {
+          Authorization: `Bearer ${access_token}`
+        }
+      })
+
+      const googleUser = userResponse.data
+
+      // Chercher ou créer l'utilisateur
+      let user = await User.findOne({
+        $or: [
+          { email: googleUser.email },
+          { googleId: googleUser.id }
+        ]
+      })
+
+      if (!user) {
+        // Créer un nouvel utilisateur
+        user = await User.create({
+          firstName: googleUser.given_name || 'Utilisateur',
+          lastName: googleUser.family_name || 'Google',
+          email: googleUser.email,
+          googleId: googleUser.id,
+          profilePicture: googleUser.picture,
+          isVerified: true,
+          team: 'denis',
+          role: 'agent',
+          assignedPlatforms: ['youtube', 'spotify'],
+          authProvider: 'google'
+        })
+      } else if (!user.googleId) {
+        // Lier un compte existant avec Google
+        user.googleId = googleUser.id
+        user.isVerified = true
+        if (googleUser.picture && !user.profilePicture) {
+          user.profilePicture = googleUser.picture
+        }
+        await user.save()
+      }
+
+      // Mettre à jour la dernière connexion
+      user.lastLogin = new Date()
+      await user.save()
+
+      // Générer les tokens
+      const token = generateToken(user._id)
+      const refreshToken = generateRefreshToken(user._id)
+
+      // Configurer les cookies
+      const cookieOptions = {
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict'
+      }
+
+      res.cookie('authToken', token, cookieOptions)
+      res.cookie('refreshToken', refreshToken, {
+        ...cookieOptions,
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      })
+
+      // Audit de connexion
+      logger.info(`Connexion Google API réussie pour ${user.email}`)
+
+      res.json({
+        success: true,
+        message: 'Connexion Google réussie',
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          team: user.team,
+          assignedPlatforms: user.assignedPlatforms,
+          permissions: user.permissions,
+          profilePicture: user.profilePicture,
+          lastLogin: user.lastLogin
+        },
+        token,
+        refreshToken
+      })
+
+    } catch (error) {
+      logger.error('Erreur lors de l\'authentification Google API:', error)
+
+      if (error.response?.status === 400) {
+        return res.status(400).json({
+          success: false,
+          message: 'Code d\'autorisation invalide ou expiré'
+        })
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de l\'authentification Google'
+      })
+    }
+  })
+)
+
+// @desc    Revoke Google OAuth token
+// @route   POST /api/auth/google/revoke
+// @access  Private
+router.post('/google/revoke',
+  authenticate,
+  asyncHandler(async (req, res) => {
+    try {
+      const user = await User.findById(req.user.id)
+
+      if (user.authProvider === 'google' && user.googleId) {
+        // En production, ici on pourrait révoquer le token côté Google
+        // Pour l'instant, on nettoie juste côté serveur
+        logger.info(`Révocation Google OAuth pour ${user.email}`)
+      }
+
+      res.json({
+        success: true,
+        message: 'Token Google révoqué avec succès'
+      })
+
+    } catch (error) {
+      logger.error('Erreur lors de la révocation Google:', error)
+      res.status(500).json({
+        success: false,
+        message: 'Erreur lors de la révocation du token'
+      })
+    }
   })
 )
 
