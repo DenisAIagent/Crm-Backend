@@ -4,10 +4,10 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-# Copy package files (Railway may use package-backend.json)
-COPY package*.json ./
-COPY package-lock.json* ./
+# Copy package files from backend directory
+# Handle both root context (monorepo) and backend context
+COPY backend/package*.json ./
+COPY backend/package-lock.json* ./
 # If package-backend.json exists, use it as package.json
 RUN if [ -f package-backend.json ]; then \
       cp package-backend.json package.json; \
@@ -26,8 +26,8 @@ RUN if [ -f package-lock.json ]; then \
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
 
-# Copy application code
-COPY --chown=nodejs:nodejs . .
+# Copy application code from backend directory
+COPY --chown=nodejs:nodejs backend/ .
 
 # Create uploads directory
 RUN mkdir -p uploads && chown nodejs:nodejs uploads
