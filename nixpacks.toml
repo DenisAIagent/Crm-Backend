@@ -1,0 +1,7 @@
+# Fichier pour désactiver Railpack et forcer l'utilisation de Dockerfile
+[phases.setup]
+nixPkgs = []
+
+[providers]
+dockerfile = true
+

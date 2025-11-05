@@ -9,3 +9,12 @@ coverage
 .cache
 logs
 *.log
+# Ignorer frontend pour ne build que le backend
+frontend/
+ressources/
+docs/
+.claude/
+.github/
+*.md
+prompt.json
+.DS_Store
