@@ -5,13 +5,12 @@ const connectDB = async () => {
     const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/mdmc-crm';
 
     const conn = await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       socketTimeoutMS: 45000,
-      bufferCommands: false,
-      bufferMaxEntries: 0,
+      // Mongoose 8.x options - removed deprecated options
+      // useNewUrlParser and useUnifiedTopology are now default
+      // bufferMaxEntries and bufferCommands are no longer supported
     });
 
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
