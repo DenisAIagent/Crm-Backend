@@ -5,11 +5,17 @@ import Cookies from 'js-cookie'
 // Configuration de base
 // Normaliser l'URL de l'API (ajouter https:// si manquant)
 export const getApiBaseUrl = () => {
+  // En développement local, utiliser le proxy Vite (URL relative)
+  if (import.meta.env.DEV && typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+    return '' // URL vide = URL relative, utilise le proxy Vite
+  }
+  
   const envUrl = import.meta.env.VITE_API_URL
   
   // Log pour debug (seulement en développement)
   if (import.meta.env.DEV) {
     console.log('🔍 API URL Debug:', {
+      'Mode': 'Production (proxy Vite)',
       'VITE_API_URL (raw)': envUrl || 'undefined',
       'Resolved URL': envUrl ? (envUrl.startsWith('http://') || envUrl.startsWith('https://') 
         ? envUrl 
@@ -95,12 +101,16 @@ const mockApiCall = (data, delay = 500) => {
 
 // Créer l'instance axios
 // Log de l'URL utilisée pour debug
+const apiBasePath = API_BASE_URL ? `${API_BASE_URL}/api` : '/api'
 if (import.meta.env.DEV) {
-  console.log('🚀 API Client initialisé avec baseURL:', `${API_BASE_URL}/api`)
+  console.log('🚀 API Client initialisé avec baseURL:', apiBasePath)
+  if (window.location.hostname === 'localhost') {
+    console.log('ℹ️ Mode développement local: utilisation du proxy Vite')
+  }
 }
 
 export const api = axios.create({
-  baseURL: `${API_BASE_URL}/api`,
+  baseURL: apiBasePath,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -125,11 +135,15 @@ api.interceptors.request.use(
       }
     }
 
-    // Log des requêtes en développement (seulement si pas en mode demo)
-    if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG === 'true') {
-      console.log(`REQUEST ${config.method?.toUpperCase()} ${config.url}`, {
+    // Log des requêtes (toujours en production pour debug CORS)
+    const isProduction = import.meta.env.PROD && window.location.hostname !== 'localhost'
+    if (import.meta.env.DEV || (isProduction && import.meta.env.VITE_ENABLE_DEBUG === 'true')) {
+      console.log(`🚀 REQUEST ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`, {
         params: config.params,
-        data: config.data
+        data: config.data,
+        headers: config.headers,
+        withCredentials: config.withCredentials,
+        origin: window.location.origin
       })
     }
 
@@ -144,10 +158,12 @@ api.interceptors.request.use(
 // Intercepteur de réponse
 api.interceptors.response.use(
   (response) => {
-    // Log des réponses en développement (seulement si debug activé)
-    if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG === 'true') {
-      console.log(`SUCCESS ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+    // Log des réponses (toujours en production pour debug CORS)
+    const isProduction = import.meta.env.PROD && window.location.hostname !== 'localhost'
+    if (import.meta.env.DEV || (isProduction && import.meta.env.VITE_ENABLE_DEBUG === 'true')) {
+      console.log(`✅ SUCCESS ${response.config.method?.toUpperCase()} ${response.config.url}`, {
         status: response.status,
+        headers: response.headers,
         data: response.data
       })
     }
@@ -157,12 +173,23 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config
 
-    // Log des erreurs en développement (seulement si debug activé)
-    if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_DEBUG === 'true') {
-      console.error(`ERROR ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url}`, {
+    // Log des erreurs (toujours en production pour debug CORS)
+    const isProduction = import.meta.env.PROD && window.location.hostname !== 'localhost'
+    if (import.meta.env.DEV || isProduction) {
+      console.error(`❌ ERROR ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url || originalRequest?.baseURL}`, {
         status: error.response?.status,
+        statusText: error.response?.statusText,
         data: error.response?.data,
-        message: error.message
+        message: error.message,
+        code: error.code,
+        config: {
+          url: originalRequest?.url,
+          baseURL: originalRequest?.baseURL,
+          method: originalRequest?.method,
+          headers: originalRequest?.headers
+        },
+        responseHeaders: error.response?.headers,
+        fullError: error
       })
     }
 
@@ -209,11 +236,58 @@ api.interceptors.response.use(
 
     // Gestion des erreurs de réseau
     if (!error.response) {
-      if (error.code === 'ECONNABORTED') {
+      // Détection spécifique des erreurs CORS
+      const isCorsError = 
+        (error.message && (
+          error.message.includes('CORS') ||
+          error.message.includes('Access-Control-Allow-Origin') ||
+          error.message.includes('preflight') ||
+          error.message.includes('blocked by CORS policy')
+        )) ||
+        (error.code === 'ERR_NETWORK' && typeof window !== 'undefined' && 
+         window.location.origin !== 'http://localhost:3000' &&
+         window.location.origin !== 'http://localhost:5173')
+      
+      if (isCorsError) {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'unknown'
+        console.error('❌ Erreur CORS détectée:', {
+          origin: origin,
+          apiUrl: API_BASE_URL || 'proxy',
+          message: 'Le backend doit autoriser les requêtes depuis ' + origin,
+          errorMessage: error.message,
+          errorCode: error.code,
+          fullError: error
+        })
+        
+        // Vérifier si c'est vraiment une erreur CORS ou une extension de navigateur
+        const isExtensionError = error.message && error.message.includes('listener indicated an asynchronous response')
+        
+        if (isExtensionError) {
+          toast.error(
+            'Erreur détectée : Une extension de navigateur peut interférer avec les requêtes. ' +
+            'Essayez de désactiver les extensions ou utilisez un autre navigateur.',
+            { duration: 10000 }
+          )
+        } else {
+          toast.error(
+            'Erreur CORS: Le serveur backend n\'autorise pas les requêtes depuis cette origine. ' +
+            'Veuillez contacter l\'administrateur pour configurer CORS sur le backend.',
+            { duration: 8000 }
+          )
+        }
+      } else if (error.code === 'ECONNABORTED') {
         toast.error('La requête a expiré. Veuillez réessayer.')
-      } else if (error.message === 'Network Error') {
-        toast.error('Erreur de connexion. Vérifiez votre connexion internet.')
+      } else if (error.message === 'Network Error' || error.code === 'ERR_NETWORK') {
+        // Vérifier si c'est une vraie erreur réseau ou une erreur CORS masquée
+        console.error('❌ Erreur réseau:', {
+          message: error.message,
+          code: error.code,
+          config: error.config,
+          fullError: error
+        })
+        toast.error('Erreur de connexion. Vérifiez votre connexion internet ou essayez de rafraîchir la page.')
       } else {
+        console.error('❌ Erreur inconnue:', error)
         toast.error('Une erreur est survenue. Veuillez réessayer.')
       }
       return Promise.reject(error)
@@ -235,7 +309,8 @@ api.interceptors.response.use(
         break
 
       case 401:
-        if (originalRequest.url !== '/auth/login') {
+        // Ne pas afficher d'erreur pour les tentatives de connexion (géré dans LoginPage)
+        if (originalRequest.url !== '/auth/login' && originalRequest.url !== '/api/auth/login') {
           toast.error('Session expirée. Veuillez vous reconnecter.')
         }
         break
@@ -267,7 +342,16 @@ api.interceptors.response.use(
         break
 
       case 500:
-        toast.error('Erreur serveur. Veuillez réessayer plus tard.')
+        // Vérifier si c'est une erreur d'authentification (certains backends retournent 500 pour UNAUTHORIZED)
+        if (data?.code === 'UNAUTHORIZED' || data?.message?.toLowerCase().includes('invalid') || 
+            data?.message?.toLowerCase().includes('password') || data?.message?.toLowerCase().includes('email')) {
+          // Erreur d'authentification, ne pas afficher de toast (géré dans LoginPage)
+          if (originalRequest.url !== '/auth/login' && originalRequest.url !== '/api/auth/login') {
+            toast.error(data?.message || 'Erreur d\'authentification')
+          }
+        } else {
+          toast.error(data?.message || 'Erreur serveur. Veuillez réessayer plus tard.')
+        }
         break
 
       case 502:
