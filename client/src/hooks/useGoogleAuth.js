@@ -167,16 +167,50 @@ export function useGoogleAuth() {
     setError(null)
 
     try {
+      // Vérifier que les variables d'environnement sont configurées
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+      const apiUrl = import.meta.env.VITE_API_URL
+
+      if (!clientId || !apiUrl) {
+        throw new Error('Configuration Google OAuth manquante. Vérifiez les variables d\'environnement.')
+      }
+
       // Générer un state CSRF unique
       const state = generateRandomString(32)
 
       // Stocker le state pour validation
       sessionStorage.setItem('oauth_state', state)
 
+      // Construire l'URL de redirection du callback
+      // Le redirect_uri doit pointer vers le backend, pas le frontend
+      // Il doit correspondre exactement à ce qui est configuré dans Google Cloud Console
+      
+      // Extraire l'URL de base du backend (enlever /api et autres chemins)
+      let backendUrl = apiUrl.trim()
+      
+      // Enlever le protocole si présent pour le traitement
+      const hasProtocol = backendUrl.startsWith('http://') || backendUrl.startsWith('https://')
+      
+      // Nettoyer l'URL : enlever /api, /api/v1, etc.
+      backendUrl = backendUrl.replace(/\/api(\/v\d+)?(\/)?$/i, '')
+      
+      // S'assurer qu'on a un protocole
+      if (!hasProtocol) {
+        // Si pas de protocole, utiliser https en production, http en dev
+        backendUrl = (window.location.protocol === 'https:' || import.meta.env.PROD) 
+          ? `https://${backendUrl}` 
+          : `http://${backendUrl}`
+      }
+      
+      // S'assurer qu'on n'a pas de slash final
+      backendUrl = backendUrl.replace(/\/$/, '')
+      
+      const redirectUri = `${backendUrl}/auth/google/callback`
+
       // Paramètres OAuth Google
       const params = new URLSearchParams({
-        client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-        redirect_uri: `${window.location.origin}/login`,
+        client_id: clientId,
+        redirect_uri: redirectUri,
         response_type: 'code',
         scope: 'openid email profile',
         state: state,
@@ -186,12 +220,19 @@ export function useGoogleAuth() {
 
       // Rediriger vers Google OAuth
       const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params}`
+      
+      console.log('🔍 Initiating Google OAuth:', {
+        clientId: clientId ? '✓' : '✗',
+        redirectUri,
+        state
+      })
+      
       window.location.href = googleAuthUrl
 
     } catch (error) {
       console.error('Error initiating Google login:', error)
-      setError('Erreur lors de l\'initialisation de la connexion Google')
-      toast.error('Impossible de se connecter à Google')
+      setError(error.message || 'Erreur lors de l\'initialisation de la connexion Google')
+      toast.error(error.message || 'Impossible de se connecter à Google')
       setIsLoading(false)
     }
   }
@@ -254,13 +295,23 @@ export function isGoogleAuthEnabled() {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
   const apiUrl = import.meta.env.VITE_API_URL
 
-  // Debug logs
-  console.log('🔍 Google Auth Debug:')
-  console.log('  VITE_GOOGLE_CLIENT_ID:', clientId)
-  console.log('  VITE_API_URL:', apiUrl)
-  console.log('  Enabled:', !!(clientId && apiUrl))
+  // Debug logs seulement en développement
+  if (import.meta.env.DEV) {
+    console.log('🔍 Google Auth Debug:')
+    console.log('  VITE_GOOGLE_CLIENT_ID:', clientId ? '✓ Configuré' : '✗ Manquant')
+    console.log('  VITE_API_URL:', apiUrl || '✗ Manquant')
+    console.log('  Enabled:', !!(clientId && apiUrl))
+  }
 
-  return !!(clientId && apiUrl)
+  const isEnabled = !!(clientId && apiUrl)
+  
+  if (!isEnabled && import.meta.env.DEV) {
+    console.warn('⚠️ Google OAuth non configuré. Vérifiez vos variables d\'environnement:')
+    console.warn('   - VITE_GOOGLE_CLIENT_ID')
+    console.warn('   - VITE_API_URL')
+  }
+
+  return isEnabled
 }
 
 /**

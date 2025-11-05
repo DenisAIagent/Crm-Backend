@@ -325,11 +325,12 @@ router.post('/refresh',
       const newRefreshToken = generateRefreshToken(user._id)
 
       // Configurer les cookies
+      // En production, sameSite doit être 'none' pour permettre les redirections cross-origin
       const cookieOptions = {
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
       }
 
       res.cookie('authToken', newToken, cookieOptions)
@@ -583,23 +584,64 @@ router.get('/google/callback',
 
     // Si erreur OAuth
     if (error) {
-      const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000'
+      const frontendURL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000'
       return res.redirect(`${frontendURL}/login?error=oauth_error&message=${encodeURIComponent(error)}`)
     }
 
     if (!code || !state) {
-      const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000'
+      const frontendURL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000'
       return res.redirect(`${frontendURL}/login?error=missing_params`)
     }
 
     try {
+      // Construire le redirect_uri utilisé lors de la requête initiale
+      // Il doit correspondre exactement à celui utilisé dans la requête OAuth
+      // Support pour GOOGLE_CALLBACK_URL (Railway) ou GOOGLE_REDIRECT_URI
+      let redirectUri = process.env.GOOGLE_CALLBACK_URL || process.env.GOOGLE_REDIRECT_URI
+      
+      if (!redirectUri) {
+        // Si pas défini, construire depuis d'autres variables
+        let backendUrl = process.env.BACKEND_URL || process.env.SERVER_URL
+        
+        if (!backendUrl) {
+          // Essayer de déduire depuis FRONTEND_URL (Railway) ou CLIENT_URL ou utiliser l'URL de la requête
+          const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL
+          if (frontendUrl) {
+            backendUrl = frontendUrl.replace(':3000', '').replace(':5173', '').replace(':3001', '')
+          } else {
+            // Fallback : utiliser l'URL de la requête
+            const protocol = req.protocol || 'https'
+            const host = req.get('host') || 'localhost:5000'
+            backendUrl = `${protocol}://${host}`
+          }
+        }
+        
+        // S'assurer qu'on a un protocole
+        if (!backendUrl.startsWith('http://') && !backendUrl.startsWith('https://')) {
+          backendUrl = process.env.NODE_ENV === 'production' ? `https://${backendUrl}` : `http://${backendUrl}`
+        }
+        
+        // Nettoyer l'URL
+        backendUrl = backendUrl.replace(/\/$/, '')
+        redirectUri = `${backendUrl}/auth/google/callback`
+      }
+      
+      logger.info(`Google OAuth redirect_uri: ${redirectUri}`)
+
+      // Vérifier que les variables d'environnement sont configurées
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        logger.error('Google OAuth credentials manquantes')
+        const frontendURL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000'
+        return res.redirect(`${frontendURL}/login?error=server_error&message=configuration_missing`)
+      }
+
       // Échanger le code contre un token d'accès
       const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
         client_id: process.env.GOOGLE_CLIENT_ID,
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI || `${process.env.CLIENT_URL}/login`
+        redirect_uri: redirectUri
       })
 
       const { access_token } = tokenResponse.data
@@ -654,11 +696,12 @@ router.get('/google/callback',
       const refreshToken = generateRefreshToken(user._id)
 
       // Configurer les cookies
+      // En production, sameSite doit être 'none' pour permettre les redirections cross-origin
       const cookieOptions = {
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
       }
 
       res.cookie('authToken', token, cookieOptions)
@@ -671,7 +714,7 @@ router.get('/google/callback',
       logger.info(`Connexion Google réussie pour ${user.email}`)
 
       // Rediriger vers le frontend avec succès
-      const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000'
+      const frontendURL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000'
       const redirectURL = `${frontendURL}/login?success=true&token=${encodeURIComponent(token)}&user=${encodeURIComponent(JSON.stringify({
         id: user._id,
         firstName: user.firstName,
@@ -684,15 +727,26 @@ router.get('/google/callback',
       res.redirect(redirectURL)
 
     } catch (error) {
-      logger.error('Erreur lors de l\'authentification Google:', error)
+      logger.error('Erreur lors de l\'authentification Google:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        redirectUri: process.env.GOOGLE_REDIRECT_URI || 'auto-generated'
+      })
 
-      const frontendURL = process.env.CLIENT_URL || 'http://localhost:3000'
+      const frontendURL = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:3000'
+      let errorMessage = 'server_error'
 
       if (error.response?.status === 400) {
-        return res.redirect(`${frontendURL}/login?error=invalid_code`)
+        errorMessage = 'invalid_code'
+        logger.error('Code d\'autorisation invalide ou redirect_uri ne correspond pas')
+      } else if (error.response?.status === 401) {
+        errorMessage = 'invalid_credentials'
+        logger.error('Credentials Google OAuth invalides')
       }
 
-      res.redirect(`${frontendURL}/login?error=server_error`)
+      const errorDetail = error.response?.data?.error_description || error.message
+      res.redirect(`${frontendURL}/login?error=${errorMessage}&detail=${encodeURIComponent(errorDetail)}`)
     }
   })
 )
@@ -712,13 +766,53 @@ router.post('/google/callback',
     }
 
     try {
+      // Construire le redirect_uri utilisé lors de la requête initiale
+      // Il doit correspondre exactement à celui utilisé dans la requête OAuth
+      let redirectUri = process.env.GOOGLE_REDIRECT_URI
+      
+      if (!redirectUri) {
+        // Si GOOGLE_REDIRECT_URI n'est pas défini, construire depuis d'autres variables
+        let backendUrl = process.env.BACKEND_URL || process.env.SERVER_URL
+        
+        if (!backendUrl) {
+          // Essayer de déduire depuis FRONTEND_URL (Railway) ou CLIENT_URL ou utiliser l'URL de la requête
+          const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL
+          if (frontendUrl) {
+            backendUrl = frontendUrl.replace(':3000', '').replace(':5173', '').replace(':3001', '')
+          } else {
+            // Fallback : utiliser l'URL de la requête
+            const protocol = req.protocol || 'https'
+            const host = req.get('host') || 'localhost:5000'
+            backendUrl = `${protocol}://${host}`
+          }
+        }
+        
+        // S'assurer qu'on a un protocole
+        if (!backendUrl.startsWith('http://') && !backendUrl.startsWith('https://')) {
+          backendUrl = process.env.NODE_ENV === 'production' ? `https://${backendUrl}` : `http://${backendUrl}`
+        }
+        
+        // Nettoyer l'URL
+        backendUrl = backendUrl.replace(/\/$/, '')
+        redirectUri = `${backendUrl}/auth/google/callback`
+      }
+
+      // Vérifier que les variables d'environnement sont configurées
+      if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+        logger.error('Google OAuth credentials manquantes')
+        return res.status(500).json({
+          success: false,
+          message: 'Configuration Google OAuth manquante'
+        })
+      }
+
       // Échanger le code contre un token d'accès
       const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
         client_id: process.env.GOOGLE_CLIENT_ID,
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI || `${process.env.CLIENT_URL}/login`
+        redirect_uri: redirectUri
       })
 
       const { access_token } = tokenResponse.data
@@ -773,11 +867,12 @@ router.post('/google/callback',
       const refreshToken = generateRefreshToken(user._id)
 
       // Configurer les cookies
+      // En production, sameSite doit être 'none' pour permettre les redirections cross-origin
       const cookieOptions = {
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict'
       }
 
       res.cookie('authToken', token, cookieOptions)

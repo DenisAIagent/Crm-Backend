@@ -1,14 +1,22 @@
 const corsOptions = {
   origin: function (origin, callback) {
     // Liste des domaines autorisés
+    // Support pour FRONTEND_URL depuis les variables d'environnement
+    const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:4173',
       'https://mdmc-crm.up.railway.app',
       'https://mdmc-music-ads.com',
-      'https://www.mdmc-music-ads.com'
+      'https://www.mdmc-music-ads.com',
+      'https://www.adminpanel.mdmcmusicads.com'
     ]
+    
+    // Ajouter FRONTEND_URL si défini et non déjà présent
+    if (frontendUrl && !allowedOrigins.includes(frontendUrl)) {
+      allowedOrigins.push(frontendUrl)
+    }
 
     // Autoriser les requêtes sans origin (mobile apps, postman, etc.)
     if (!origin) return callback(null, true)
