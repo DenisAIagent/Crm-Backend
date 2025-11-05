@@ -3,7 +3,20 @@ import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
 
 // Configuration de base
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.mdmcmusicads.com'
+// Normaliser l'URL de l'API (ajouter https:// si manquant)
+const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL
+  if (!envUrl) return 'https://api.mdmcmusicads.com'
+  
+  // Si l'URL ne commence pas par http:// ou https://, ajouter https://
+  if (envUrl && !envUrl.startsWith('http://') && !envUrl.startsWith('https://')) {
+    return `https://${envUrl}`
+  }
+  
+  return envUrl
+}
+
+const API_BASE_URL = getApiBaseUrl()
 const IS_MOCK_MODE = import.meta.env.VITE_ENABLE_MOCK_API === 'true'
 
 // Mock data pour le mode frontend-only
