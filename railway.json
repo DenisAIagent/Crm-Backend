@@ -11,8 +11,6 @@
   "deploy": {
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3,
-    "startCommand": null,
-    "healthcheckPath": "/",
-    "healthcheckTimeout": 30
+    "startCommand": null
   }
 }

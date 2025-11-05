@@ -14,7 +14,8 @@
       "Bash(find:*)",
       "Bash(cd:*)",
       "Bash(npm install)",
-      "Bash(npm run preview:*)"
+      "Bash(npm run preview:*)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
