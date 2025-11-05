@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/context/AuthContext'
 import { toast } from 'react-hot-toast'
+import { getApiBaseUrl } from '@/utils/api'
 
 /**
  * Hook personnalisé pour gérer l'authentification Google OAuth
@@ -103,7 +104,8 @@ export function useGoogleAuth() {
           // Production mode : exchange code for token (no simulation)
 
           // Mode production : échanger le code contre un token
-          const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/google/callback`, {
+          const apiUrl = getApiBaseUrl()
+          const response = await fetch(`${apiUrl}/api/auth/google/callback`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -171,7 +173,7 @@ export function useGoogleAuth() {
     try {
       // Vérifier que les variables d'environnement sont configurées
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-      const apiUrl = import.meta.env.VITE_API_URL
+      const apiUrl = getApiBaseUrl()
 
       if (!clientId || !apiUrl) {
         throw new Error('Configuration Google OAuth manquante. Vérifiez les variables d\'environnement.')
@@ -188,21 +190,11 @@ export function useGoogleAuth() {
       // Il doit correspondre exactement à ce qui est configuré dans Google Cloud Console
       
       // Extraire l'URL de base du backend (enlever /api et autres chemins)
+      // apiUrl est déjà normalisé avec https:// par getApiBaseUrl()
       let backendUrl = apiUrl.trim()
-      
-      // Enlever le protocole si présent pour le traitement
-      const hasProtocol = backendUrl.startsWith('http://') || backendUrl.startsWith('https://')
       
       // Nettoyer l'URL : enlever /api, /api/v1, etc.
       backendUrl = backendUrl.replace(/\/api(\/v\d+)?(\/)?$/i, '')
-      
-      // S'assurer qu'on a un protocole
-      if (!hasProtocol) {
-        // Si pas de protocole, utiliser https en production, http en dev
-        backendUrl = (window.location.protocol === 'https:' || import.meta.env.PROD) 
-          ? `https://${backendUrl}` 
-          : `http://${backendUrl}`
-      }
       
       // S'assurer qu'on n'a pas de slash final
       backendUrl = backendUrl.replace(/\/$/, '')
@@ -245,7 +237,8 @@ export function useGoogleAuth() {
   const handleGoogleLogout = async () => {
     try {
       // Révoquer le token côté serveur si nécessaire
-      await fetch(`${import.meta.env.VITE_API_URL}/api/auth/google/revoke`, {
+      const apiUrl = getApiBaseUrl()
+      await fetch(`${apiUrl}/api/auth/google/revoke`, {
         method: 'POST',
         credentials: 'include'
       })
@@ -295,7 +288,7 @@ function generateRandomString(length) {
  */
 export function isGoogleAuthEnabled() {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
-  const apiUrl = import.meta.env.VITE_API_URL
+  const apiUrl = getApiBaseUrl()
 
   // Debug logs seulement en développement
   if (import.meta.env.DEV) {

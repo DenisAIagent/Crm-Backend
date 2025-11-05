@@ -4,7 +4,7 @@ import Cookies from 'js-cookie'
 
 // Configuration de base
 // Normaliser l'URL de l'API (ajouter https:// si manquant)
-const getApiBaseUrl = () => {
+export const getApiBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL
   if (!envUrl) return 'https://api.mdmcmusicads.com'
   
