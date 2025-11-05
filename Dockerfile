@@ -1,69 +1,35 @@
-# ============================================
-# Dockerfile Frontend-Only pour Railway
-# Dépôt: Crm-Frontend
-# ============================================
-FROM node:20-alpine AS builder
+# Use Node.js LTS version
+FROM node:20-alpine
 
+# Set working directory
 WORKDIR /app
 
-# Variables d'environnement pour le build
-ENV NODE_ENV=production
-ENV GENERATE_SOURCEMAP=false
+# Copy package files
+COPY package.json ./
+COPY package-lock.json ./
 
-# Copier les fichiers de dépendances
-COPY client/package*.json ./client/
+# Install dependencies
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Installer les dépendances du client (y compris devDependencies pour le build)
-WORKDIR /app/client
-RUN npm ci --include=dev
+# Create non-root user
+RUN addgroup -g 1001 -S nodejs
+RUN adduser -S nodejs -u 1001
 
-# Copier le code source du client
-COPY client/ ./
+# Copy application code
+COPY --chown=nodejs:nodejs . .
 
-# Clean build pour éviter les incohérences de cache
-RUN rm -rf dist .vite node_modules/.vite
+# Create uploads directory
+RUN mkdir -p uploads && chown nodejs:nodejs uploads
 
-# Build de l'application React
-RUN npm run build
+# Switch to non-root user
+USER nodejs
 
-# ============================================
-# Stage 2: Image de production avec Nginx
-# ============================================
-FROM nginx:1.25-alpine AS production
+# Expose port
+EXPOSE 5000
 
-# Installer curl pour le diagnostic si nécessaire
-RUN apk add --no-cache curl
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node healthcheck.js
 
-# Métadonnées
-LABEL maintainer="MDMC Music Ads"
-LABEL description="CRM Frontend - Production Ready"
-LABEL version="1.0.0"
-
-# Copier les fichiers buildés depuis le stage builder
-COPY --from=builder /app/client/dist /usr/share/nginx/html
-
-# Copier la configuration Nginx personnalisée
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copier le script d'entrée pour Railway
-COPY docker/start.sh /start.sh
-RUN chmod +x /start.sh
-
-# Ajuster les permissions (utiliser l'utilisateur nginx existant)
-RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
-
-# Note: Nginx doit démarrer en tant que root pour écouter sur le port 80
-# Les processus workers seront automatiquement exécutés en tant que nginx
-# Pas besoin de USER nginx ici
-
-# Exposer le port (dynamique pour Railway)
-EXPOSE $PORT
-
-# Pas de healthcheck pour un frontend statique
-# Railway détectera automatiquement que le service est up quand Nginx démarre
-
-# Commande de démarrage avec script personnalisé pour Railway
-CMD ["/start.sh"]
+# Start the application
+CMD ["node", "server.js"]
