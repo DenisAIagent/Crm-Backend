@@ -45,6 +45,10 @@ COPY --from=builder /app/client/dist /usr/share/nginx/html
 # Copier la configuration Nginx personnalisée
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
+# Copier le script d'entrée pour Railway
+COPY docker/start.sh /start.sh
+RUN chmod +x /start.sh
+
 # Ajuster les permissions (utiliser l'utilisateur nginx existant)
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chown -R nginx:nginx /var/cache/nginx && \
@@ -55,11 +59,11 @@ RUN chown -R nginx:nginx /usr/share/nginx/html && \
 # Les processus workers seront automatiquement exécutés en tant que nginx
 # Pas besoin de USER nginx ici
 
-# Exposer le port
-EXPOSE 80
+# Exposer le port (dynamique pour Railway)
+EXPOSE $PORT
 
 # Pas de healthcheck pour un frontend statique
 # Railway détectera automatiquement que le service est up quand Nginx démarre
 
-# Commande de démarrage
-CMD ["nginx", "-g", "daemon off;"]
+# Commande de démarrage avec script personnalisé pour Railway
+CMD ["/start.sh"]
