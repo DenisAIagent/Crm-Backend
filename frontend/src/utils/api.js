@@ -6,7 +6,25 @@ import Cookies from 'js-cookie'
 // Normaliser l'URL de l'API (ajouter https:// si manquant)
 export const getApiBaseUrl = () => {
   const envUrl = import.meta.env.VITE_API_URL
-  if (!envUrl) return 'https://api.mdmcmusicads.com'
+  
+  // Log pour debug (seulement en développement)
+  if (import.meta.env.DEV) {
+    console.log('🔍 API URL Debug:', {
+      'VITE_API_URL (raw)': envUrl || 'undefined',
+      'Resolved URL': envUrl ? (envUrl.startsWith('http://') || envUrl.startsWith('https://') 
+        ? envUrl 
+        : `https://${envUrl}`) : 'https://crm-backend-production-f0c8.up.railway.app'
+    })
+  }
+  
+  if (!envUrl) {
+    // Valeur par défaut : Railway backend
+    const defaultUrl = 'https://crm-backend-production-f0c8.up.railway.app'
+    if (import.meta.env.DEV) {
+      console.warn('⚠️ VITE_API_URL non défini, utilisation de la valeur par défaut:', defaultUrl)
+    }
+    return defaultUrl
+  }
   
   // Si l'URL ne commence pas par http:// ou https://, ajouter https://
   if (envUrl && !envUrl.startsWith('http://') && !envUrl.startsWith('https://')) {
@@ -76,6 +94,11 @@ const mockApiCall = (data, delay = 500) => {
 }
 
 // Créer l'instance axios
+// Log de l'URL utilisée pour debug
+if (import.meta.env.DEV) {
+  console.log('🚀 API Client initialisé avec baseURL:', `${API_BASE_URL}/api`)
+}
+
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
   timeout: 30000,
