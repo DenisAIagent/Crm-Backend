@@ -18,7 +18,10 @@ Railway est probablement connecté au **mauvais repository** ou au **mauvais dos
 2. Vérifiez la section **Source** :
    - **Repository** : Doit être `DenisAIagent/CRM-frontend2` ✅
    - **Branch** : `main`
-   - **Root Directory** : Doit être **vide** (à la racine) ✅
+   - **Root Directory** : Doit être **`frontend`** ⚠️ **IMPORTANT** ✅
+
+**Note importante** : Le repository `CRM-frontend2` contient à la fois `/backend` et `/frontend`. 
+Vous devez configurer **Root Directory = `frontend`** pour que Railway utilise le bon dossier !
 
 ### 2. Si le mauvais repository est connecté
 
@@ -29,25 +32,29 @@ Railway est probablement connecté au **mauvais repository** ou au **mauvais dos
 5. Sélectionnez la branche `main`
 6. Laissez **Root Directory** vide
 
-### 3. Forcer l'utilisation du Dockerfile
+### 3. Configurer Root Directory
+
+**⚠️ ÉTAPE CRITIQUE** : Le repository contient `/backend` et `/frontend`
+
+1. Dans **Settings** → **Source**
+2. Modifiez **Root Directory** :
+   - **Root Directory** : `frontend` ✅ (pas vide !)
+3. Cliquez sur **Save**
+
+Cela indique à Railway d'utiliser le dossier `/frontend` qui contient :
+- `Dockerfile`
+- `package.json`
+- `src/`
+- `vite.config.js`
+
+### 4. Forcer l'utilisation du Dockerfile
 
 1. Dans **Settings** → **Build & Deploy**
 2. Vérifiez :
-   - **Build Command** : Vide ou `docker build -t frontend .`
-   - **Start Command** : Vide (le Dockerfile gère ça)
-   - **Dockerfile Path** : `Dockerfile` (ou vide si à la racine)
+   - **Build Command** : Vide (le Dockerfile gère ça)
+   - **Start Command** : Vide (le Dockerfile gère ça avec CMD)
+   - **Dockerfile Path** : `Dockerfile` (ou vide, Railway le trouvera dans `/frontend`)
    - **Build Method** : Sélectionnez **Dockerfile**
-
-### 4. Vérifier que le bon dossier est utilisé
-
-Si le repository `CRM-frontend2` contient plusieurs dossiers (client/, frontend/, etc.) :
-- **Root Directory** doit pointer vers le dossier qui contient :
-  - `Dockerfile`
-  - `package.json`
-  - `src/`
-  - `vite.config.js`
-
-Si tout est à la racine, laissez **Root Directory** vide.
 
 ## 🔍 Vérification après correction
 
@@ -72,8 +79,23 @@ TypeError: JwtStrategy requires a secret or key
 
 - [ ] Repository : `DenisAIagent/CRM-frontend2`
 - [ ] Branch : `main`
-- [ ] Root Directory : Vide (racine)
+- [ ] **Root Directory : `frontend`** ⚠️ **CRITIQUE - PAS vide !**
 - [ ] Build Method : Dockerfile
-- [ ] Dockerfile présent à la racine
-- [ ] Aucun code backend dans le repository frontend
+- [ ] Dockerfile présent dans `/frontend`
+- [ ] Le dossier `/frontend` contient bien `package.json`, `src/`, `vite.config.js`
+
+## 🎯 Configuration exacte
+
+**Settings → Source :**
+```
+Repository: DenisAIagent/CRM-frontend2
+Branch: main
+Root Directory: frontend  ← IMPORTANT !
+```
+
+**Settings → Build & Deploy :**
+```
+Build Method: Dockerfile
+Dockerfile Path: Dockerfile (ou vide)
+```
 
