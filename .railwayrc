@@ -1,9 +1,0 @@
-# Railway configuration
-[build]
-watchPatterns = ["**"]
-
-[deploy]
-startCommand = "npm start"
-healthcheckPath = "/api/health"
-healthcheckTimeout = 300
-restartPolicyType = "ON_FAILURE"

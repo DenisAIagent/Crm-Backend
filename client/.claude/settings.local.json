@@ -10,7 +10,10 @@
       "Bash(git push:*)",
       "Bash(docker build:*)",
       "Bash(chmod:*)",
-      "Bash(./test-nginx.sh:*)"
+      "Bash(./test-nginx.sh:*)",
+      "Bash(find:*)",
+      "Bash(cd:*)",
+      "Bash(npm install)"
     ],
     "deny": [],
     "ask": []

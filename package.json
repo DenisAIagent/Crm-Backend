@@ -5,12 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "cd client && npm run dev",
-    "dev:client": "cd client && npm run dev",
-    "client:dev": "cd client && npm run dev",
-    "client:build": "cd client && npm run build",
     "build": "cd client && npm run build",
+    "preview": "cd client && npm run preview",
     "lint": "cd client && npm run lint",
-    "lint:fix": "cd client && npm run lint:fix"
+    "lint:fix": "cd client && npm run lint:fix",
+    "clean": "cd client && rm -rf dist node_modules/.vite",
+    "install:client": "cd client && npm install"
   },
   "keywords": [
     "crm",

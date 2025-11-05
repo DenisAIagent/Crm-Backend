@@ -2,7 +2,6 @@ import React, { Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useAuth } from './context/AuthContext'
-import { useSocket } from './context/SocketContext'
 
 // Layout components
 import Layout from './components/Layout/Layout'
@@ -75,8 +74,6 @@ function PageLoader() {
 function App() {
   const { isLoading } = useAuth()
 
-  // Connexion WebSocket une fois authentifié
-  useSocket()
 
   // Afficher le loader principal pendant la vérification de l'auth
   if (isLoading) {

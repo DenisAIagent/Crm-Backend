@@ -20,7 +20,6 @@ import { leadsAPI } from '@/utils/api'
 // Données de démonstration pour les leads
 const mockLeads = []
 import { useAuth } from '@/context/AuthContext'
-import { useSocket } from '@/context/SocketContext'
 
 // Composants
 import LoadingSpinner from '@/components/UI/LoadingSpinner'
@@ -94,7 +93,6 @@ const KANBAN_COLUMNS = [
 
 function KanbanBoard() {
   const { user } = useAuth()
-  const { socket } = useSocket()
   const queryClient = useQueryClient()
 
   // États locaux
@@ -259,32 +257,6 @@ function KanbanBoard() {
     }
   }
 
-  // WebSocket pour les mises à jour temps réel
-  useEffect(() => {
-    if (socket && user) {
-      socket.emit('join-user-room', user.id)
-      if (user.team) {
-        socket.emit('join-team-room', user.team)
-      }
-
-      const handleLeadUpdate = (leadData) => {
-        queryClient.invalidateQueries(['leads'])
-      }
-
-      const handleNewLead = (leadData) => {
-        queryClient.invalidateQueries(['leads'])
-        toast.success(`Nouveau lead: ${leadData.artistName}`)
-      }
-
-      socket.on('lead_updated', handleLeadUpdate)
-      socket.on('new_lead', handleNewLead)
-
-      return () => {
-        socket.off('lead_updated', handleLeadUpdate)
-        socket.off('new_lead', handleNewLead)
-      }
-    }
-  }, [socket, user, queryClient])
 
   // Options de filtres
   const platformOptions = [

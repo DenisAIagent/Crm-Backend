@@ -8,7 +8,6 @@ import { Toaster } from 'react-hot-toast'
 
 import App from './App.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
-import { SocketProvider } from './context/SocketContext.jsx'
 import { ThemeProvider } from './context/ThemeContext.jsx'
 
 import './index.css'
@@ -69,11 +68,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <QueryClientProvider client={queryClient}>
           <ThemeProvider>
             <AuthProvider>
-              <SocketProvider>
-                <App />
-                <Toaster toastOptions={toastOptions} />
-                {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
-              </SocketProvider>
+              <App />
+              <Toaster toastOptions={toastOptions} />
+              {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>

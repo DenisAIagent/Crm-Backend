@@ -31,7 +31,7 @@ RUN npm run build
 # ============================================
 FROM nginx:1.25-alpine AS production
 
-# Installer curl pour le healthcheck
+# Installer curl pour le diagnostic si nécessaire
 RUN apk add --no-cache curl
 
 # Métadonnées
@@ -58,10 +58,8 @@ RUN chown -R nginx:nginx /usr/share/nginx/html && \
 # Exposer le port
 EXPOSE 80
 
-# Health check pour Railway (utilise /health endpoint de nginx)
-# Utiliser curl au lieu de wget (plus fiable dans Alpine)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:80/health || exit 1
+# Pas de healthcheck pour un frontend statique
+# Railway détectera automatiquement que le service est up quand Nginx démarre
 
 # Commande de démarrage
 CMD ["nginx", "-g", "daemon off;"]

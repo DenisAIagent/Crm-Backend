@@ -5,13 +5,7 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-        secure: false
-      }
-    }
+    host: true
   },
   build: {
     outDir: 'dist',
@@ -23,7 +17,7 @@ export default defineConfig({
           vendor: ['react', 'react-dom', 'react-router-dom'],
           charts: ['recharts'],
           forms: ['react-hook-form', 'react-select', 'react-datepicker'],
-          utils: ['axios', 'date-fns', 'socket.io-client']
+          utils: ['axios', 'date-fns', 'js-cookie']
         }
       }
     }
