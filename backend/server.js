@@ -117,7 +117,10 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 'mongodb://localhost:27017/mdmc-crm',
+    mongoUrl: process.env.MONGODB_URI || 
+              process.env.MONGO_URL || 
+              process.env.DATABASE_URL || 
+              'mongodb://localhost:27017/mdmc-crm',
     touchAfter: 24 * 3600 // lazy session update
   }),
   cookie: {

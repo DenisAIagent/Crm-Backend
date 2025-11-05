@@ -275,7 +275,12 @@ const sampleCampaigns = [
 // Connect to database
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/mdmc-crm');
+    // Support multiple environment variable names for Railway compatibility
+    const mongoURI = process.env.MONGODB_URI || 
+                     process.env.MONGO_URL || 
+                     process.env.DATABASE_URL || 
+                     'mongodb://localhost:27017/mdmc-crm';
+    await mongoose.connect(mongoURI);
     console.log('✅ MongoDB Connected');
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error);
