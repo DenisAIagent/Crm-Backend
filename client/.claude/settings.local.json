@@ -5,7 +5,12 @@
       "Bash(npm run build:*)",
       "Bash(echo:*)",
       "Bash(echo \"VITE_FRONTEND_ONLY=$VITE_FRONTEND_ONLY:-''undefined''\")",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(docker build:*)",
+      "Bash(chmod:*)",
+      "Bash(./test-nginx.sh:*)"
     ],
     "deny": [],
     "ask": []
