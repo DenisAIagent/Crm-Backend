@@ -86,9 +86,13 @@ const corsOptions = {
 // Apply CORS first, before rate limiting
 app.use(cors(corsOptions));
 
-// Security middleware
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
+// Security middleware - configure to not interfere with CORS
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginEmbedderPolicy: false,
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
@@ -139,14 +143,15 @@ app.use(passport.session());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Health check endpoint for Railway
-app.get('/health', (req, res) => {
+// Health check endpoint for Railway (accessible without CORS issues)
+app.get('/health', cors(corsOptions), (req, res) => {
   res.status(200).json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || 'development',
-    version: '1.0.0'
+    version: '1.0.0',
+    cors: 'enabled'
   });
 });
 
