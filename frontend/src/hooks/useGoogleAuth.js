@@ -199,7 +199,8 @@ export function useGoogleAuth() {
       // S'assurer qu'on n'a pas de slash final
       backendUrl = backendUrl.replace(/\/$/, '')
       
-      const redirectUri = `${backendUrl}/auth/google/callback`
+      // L'endpoint Google OAuth est /api/auth/google/callback
+      const redirectUri = `${backendUrl}/api/auth/google/callback`
 
       // Paramètres OAuth Google
       const params = new URLSearchParams({
