@@ -1,0 +1,14 @@
+# Configuration Nixpacks pour forcer l'utilisation du Dockerfile
+# Railway utilisera le Dockerfile si présent, sinon cette config sera utilisée
+[phases.setup]
+nixPkgs = ["nodejs-20_x"]
+
+[phases.install]
+cmds = ["npm ci --include=dev"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+# Note: Cette config ne sera utilisée que si Dockerfile n'est pas détecté
+# Le Dockerfile est prioritaire sur cette configuration
+

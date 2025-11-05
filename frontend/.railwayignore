@@ -1,0 +1,3 @@
+# Fichiers à ignorer pour Railway
+# Ce fichier force Railway à utiliser le Dockerfile au lieu de détecter automatiquement Node.js
+
