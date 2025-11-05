@@ -276,7 +276,9 @@ const sampleCampaigns = [
 const connectDB = async () => {
   try {
     // Support multiple environment variable names for Railway compatibility
-    const mongoURI = process.env.MONGODB_URI || 
+    // Priority: MONGO_PUBLIC_URL (Railway public), MONGO_URL (Railway internal), MONGODB_URI, DATABASE_URL
+    const mongoURI = process.env.MONGO_PUBLIC_URL || 
+                     process.env.MONGODB_URI || 
                      process.env.MONGO_URL || 
                      process.env.DATABASE_URL || 
                      'mongodb://localhost:27017/mdmc-crm';

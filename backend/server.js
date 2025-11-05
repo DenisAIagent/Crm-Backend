@@ -117,7 +117,8 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   store: MongoStore.create({
-    mongoUrl: process.env.MONGODB_URI || 
+    mongoUrl: process.env.MONGO_PUBLIC_URL || 
+              process.env.MONGODB_URI || 
               process.env.MONGO_URL || 
               process.env.DATABASE_URL || 
               'mongodb://localhost:27017/mdmc-crm',
