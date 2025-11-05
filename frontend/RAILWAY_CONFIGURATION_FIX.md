@@ -18,10 +18,12 @@ Railway est probablement connecté au **mauvais repository** ou au **mauvais dos
 2. Vérifiez la section **Source** :
    - **Repository** : Doit être `DenisAIagent/CRM-frontend2` ✅
    - **Branch** : `main`
-   - **Root Directory** : Doit être **`frontend`** ⚠️ **IMPORTANT** ✅
+   - **Root Directory** : Doit être **VIDE** (racine) ✅
 
-**Note importante** : Le repository `CRM-frontend2` contient à la fois `/backend` et `/frontend`. 
-Vous devez configurer **Root Directory = `frontend`** pour que Railway utilise le bon dossier !
+**Note importante** : Le repository `CRM-frontend2` devrait contenir uniquement le frontend à la racine (Dockerfile, package.json, src/, etc.). 
+Si Railway essaie d'exécuter du backend, c'est que soit :
+- Il y a du code backend dans le repository GitHub (à vérifier)
+- Railway détecte automatiquement Node.js et ignore le Dockerfile
 
 ### 2. Si le mauvais repository est connecté
 
@@ -32,20 +34,19 @@ Vous devez configurer **Root Directory = `frontend`** pour que Railway utilise l
 5. Sélectionnez la branche `main`
 6. Laissez **Root Directory** vide
 
-### 3. Configurer Root Directory
+### 3. Vérifier le contenu du repository GitHub
 
-**⚠️ ÉTAPE CRITIQUE** : Le repository contient `/backend` et `/frontend`
+Si Railway essaie d'exécuter du backend, vérifiez que le repository GitHub `CRM-frontend2` contient **uniquement** du frontend à la racine :
 
-1. Dans **Settings** → **Source**
-2. Modifiez **Root Directory** :
-   - **Root Directory** : `frontend` ✅ (pas vide !)
-3. Cliquez sur **Save**
+- ✅ `Dockerfile`
+- ✅ `package.json`
+- ✅ `src/`
+- ✅ `vite.config.js`
+- ❌ **PAS** de `server.js`, `passport.js`, `config/passport.js`, etc.
 
-Cela indique à Railway d'utiliser le dossier `/frontend` qui contient :
-- `Dockerfile`
-- `package.json`
-- `src/`
-- `vite.config.js`
+Si le repository contient du backend, il faut soit :
+1. Le supprimer du repository GitHub
+2. Ou configurer Root Directory vers un sous-dossier qui contient uniquement le frontend
 
 ### 4. Forcer l'utilisation du Dockerfile
 
@@ -79,10 +80,11 @@ TypeError: JwtStrategy requires a secret or key
 
 - [ ] Repository : `DenisAIagent/CRM-frontend2`
 - [ ] Branch : `main`
-- [ ] **Root Directory : `frontend`** ⚠️ **CRITIQUE - PAS vide !**
+- [ ] **Root Directory : VIDE** (racine) ✅
 - [ ] Build Method : Dockerfile
-- [ ] Dockerfile présent dans `/frontend`
-- [ ] Le dossier `/frontend` contient bien `package.json`, `src/`, `vite.config.js`
+- [ ] Dockerfile présent à la racine
+- [ ] Le repository GitHub contient uniquement du frontend (pas de backend)
+- [ ] Pas de `server.js`, `passport.js`, `config/passport.js` dans le repository
 
 ## 🎯 Configuration exacte
 
@@ -90,7 +92,7 @@ TypeError: JwtStrategy requires a secret or key
 ```
 Repository: DenisAIagent/CRM-frontend2
 Branch: main
-Root Directory: frontend  ← IMPORTANT !
+Root Directory: (vide)  ← Racine du repository
 ```
 
 **Settings → Build & Deploy :**
