@@ -32,7 +32,7 @@ connectDB();
 // Trust proxy for Railway deployment
 app.set('trust proxy', 1);
 
-// Rate limiting
+// Rate limiting - skip for OPTIONS requests (CORS preflight)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: process.env.NODE_ENV === 'production' ? 100 : 1000, // Limit each IP
@@ -41,6 +41,7 @@ const limiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS', // Skip rate limiting for preflight requests
 });
 
 // CORS configuration for production - MUST BE BEFORE OTHER MIDDLEWARES
