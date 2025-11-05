@@ -100,7 +100,9 @@ export function useGoogleAuth() {
         setIsLoading(true)
 
         try {
-          // Échanger le code contre un token
+          // Production mode : exchange code for token (no simulation)
+
+          // Mode production : échanger le code contre un token
           const response = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/google/callback`, {
             method: 'POST',
             headers: {

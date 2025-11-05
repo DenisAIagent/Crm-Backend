@@ -14,11 +14,10 @@ export function useLoginDemo() {
     lastAttempt: null
   })
 
-  // Détecter si on est en mode demo
+  // Détecter si on est en mode demo - DISABLED FOR PRODUCTION
   useEffect(() => {
-    const isDev = import.meta.env.DEV
-    const hasDemo = window.location.search.includes('demo=true')
-    setDemoMode(isDev || hasDemo)
+    const isDemoModeEnabled = import.meta.env.VITE_DEMO_MODE === 'true'
+    setDemoMode(isDemoModeEnabled)
   }, [])
 
   // Fonction pour remplir automatiquement les credentials demo

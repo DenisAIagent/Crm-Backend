@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react'
-import { io } from 'socket.io-client'
 import toast from 'react-hot-toast'
 import { useAuth } from './AuthContext'
 import { useQueryClient } from 'react-query'
 
 const SocketContext = createContext()
+
+// Mode frontend-only : simuler les sockets avec des événements locaux
+const IS_FRONTEND_ONLY = import.meta.env.VITE_FRONTEND_ONLY === 'true' || import.meta.env.VITE_ENABLE_MOCK_API === 'true'
 
 export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null)
@@ -14,11 +16,16 @@ export function SocketProvider({ children }) {
   const { user, isAuthenticated } = useAuth()
   const queryClient = useQueryClient()
   const socketRef = useRef(null)
+  const mockSocketRef = useRef(null)
 
   // Connexion/déconnexion du socket
   useEffect(() => {
     if (isAuthenticated && user && !socketRef.current) {
-      connectSocket()
+      if (IS_FRONTEND_ONLY) {
+        connectMockSocket()
+      } else {
+        connectSocket()
+      }
     } else if (!isAuthenticated && socketRef.current) {
       disconnectSocket()
     }
@@ -30,51 +37,131 @@ export function SocketProvider({ children }) {
     }
   }, [isAuthenticated, user])
 
-  const connectSocket = () => {
-    const serverPath = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+  // Mock socket pour le mode frontend-only
+  const connectMockSocket = () => {
+    console.log('Mode frontend-only: Connexion socket simulée')
+    setIsConnected(true)
 
-    socketRef.current = io(serverPath, {
-      autoConnect: true,
-      transports: ['websocket', 'polling'],
-      timeout: 20000,
-      forceNew: true
-    })
-
-    const socket = socketRef.current
-
-    socket.on('connect', () => {
-      console.log('Socket connecté:', socket.id)
-      setIsConnected(true)
-      setSocket(socket)
-
-      // Rejoindre les rooms utilisateur
-      if (user) {
-        socket.emit('join-user-room', user.id)
-        socket.emit('join-team-room', user.team)
+    // Créer un objet mock socket
+    const mockSocket = {
+      id: 'mock-socket-' + Date.now(),
+      emit: (event, data) => {
+        console.log('Mock socket emit:', event, data)
+      },
+      on: (event, handler) => {
+        console.log('Mock socket listening to:', event)
+      },
+      off: (event, handler) => {
+        console.log('Mock socket stop listening to:', event)
+      },
+      disconnect: () => {
+        console.log('Mock socket disconnected')
+        setIsConnected(false)
       }
-    })
+    }
 
-    socket.on('disconnect', (reason) => {
-      console.log('Socket déconnecté:', reason)
-      setIsConnected(false)
-    })
+    socketRef.current = mockSocket
+    setSocket(mockSocket)
 
-    socket.on('connect_error', (error) => {
-      console.error('Erreur de connexion socket:', error)
-      setIsConnected(false)
-    })
+    // Simuler quelques notifications de démo
+    setTimeout(() => {
+      simulateMockNotifications()
+    }, 2000)
+  }
 
-    // Événements métier
-    setupBusinessEvents(socket)
+  const connectSocket = () => {
+    // Seulement si socket.io est disponible et pas en mode frontend-only
+    if (typeof io === 'undefined') {
+      console.warn('Socket.IO non disponible, utilisation du mode mock')
+      connectMockSocket()
+      return
+    }
+
+    const serverPath = import.meta.env.VITE_API_URL || 'https://api.mdmcmusicads.com'
+
+    try {
+      const { io } = require('socket.io-client')
+      socketRef.current = io(serverPath, {
+        autoConnect: true,
+        transports: ['websocket', 'polling'],
+        timeout: 20000,
+        forceNew: true
+      })
+
+      const socket = socketRef.current
+
+      socket.on('connect', () => {
+        console.log('Socket connecté:', socket.id)
+        setIsConnected(true)
+        setSocket(socket)
+
+        // Rejoindre les rooms utilisateur
+        if (user) {
+          socket.emit('join-user-room', user.id)
+          socket.emit('join-team-room', user.team)
+        }
+      })
+
+      socket.on('disconnect', (reason) => {
+        console.log('Socket déconnecté:', reason)
+        setIsConnected(false)
+      })
+
+      socket.on('connect_error', (error) => {
+        console.error('Erreur de connexion socket:', error)
+        setIsConnected(false)
+        // Fallback vers mock socket
+        connectMockSocket()
+      })
+
+      // Événements métier
+      setupBusinessEvents(socket)
+    } catch (error) {
+      console.error('Erreur lors de la connexion socket:', error)
+      connectMockSocket()
+    }
   }
 
   const disconnectSocket = () => {
     if (socketRef.current) {
-      socketRef.current.disconnect()
+      if (typeof socketRef.current.disconnect === 'function') {
+        socketRef.current.disconnect()
+      }
       socketRef.current = null
       setSocket(null)
       setIsConnected(false)
     }
+  }
+
+  // Simuler des notifications pour le mode demo
+  const simulateMockNotifications = () => {
+    if (!IS_FRONTEND_ONLY) return
+
+    const mockNotifications = [
+      {
+        id: 'demo-1',
+        type: 'new_lead',
+        title: 'Nouveau lead',
+        message: 'Artist Demo - Meta Ads',
+        timestamp: new Date(),
+        data: { platform: 'Meta Ads' }
+      },
+      {
+        id: 'demo-2',
+        type: 'campaign_updated',
+        title: 'Campagne mise à jour',
+        message: 'Summer Festival - Performances améliorées',
+        timestamp: new Date(),
+        data: { performance: '+15%' }
+      }
+    ]
+
+    mockNotifications.forEach((notif, index) => {
+      setTimeout(() => {
+        addNotification(notif)
+        toast.success(notif.message, { duration: 3000 })
+      }, index * 3000)
+    })
   }
 
   const setupBusinessEvents = (socket) => {

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react'
 import toast from 'react-hot-toast'
-import { api } from '@/utils/api'
+import { api, authAPI } from '@/utils/api'
 import Cookies from 'js-cookie'
 
 const AuthContext = createContext()
@@ -122,48 +122,12 @@ export function AuthProvider({ children }) {
       const token = Cookies.get('authToken')
 
       if (!token) {
-        // Auto-connexion si pas de token et en mode démo
-        if (import.meta.env.VITE_DEMO_MODE === 'true' || import.meta.env.DEV) {
-          console.log('Connexion automatique activée...')
-          try {
-            const response = await api.post('/auth/login', {
-              email: 'denis@mdmc.fr',
-              password: 'password123'
-            })
-
-            const { user, token: newToken, refreshToken } = response.data
-
-            // Stocker les tokens
-            Cookies.set('authToken', newToken, {
-              expires: 7,
-              secure: import.meta.env.PROD,
-              sameSite: 'strict'
-            })
-
-            Cookies.set('refreshToken', refreshToken, {
-              expires: 7,
-              secure: import.meta.env.PROD,
-              sameSite: 'strict'
-            })
-
-            dispatch({
-              type: AUTH_ACTIONS.LOGIN_SUCCESS,
-              payload: { user, token: newToken }
-            })
-
-            toast.success(`Connexion automatique réussie ! Bienvenue ${user.firstName} !`)
-            return
-          } catch (error) {
-            console.error('Auto-login failed:', error)
-          }
-        }
-
         dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: { loading: false } })
         return
       }
 
       // Vérifier si le token est valide
-      const response = await api.get('/auth/me')
+      const response = await authAPI.me()
 
       dispatch({
         type: AUTH_ACTIONS.LOGIN_SUCCESS,
@@ -187,45 +151,8 @@ export function AuthProvider({ children }) {
     try {
       dispatch({ type: AUTH_ACTIONS.LOGIN_START })
 
-      // Mode demo - bypass API si activé - AUTO LOGIN avec compte Denis
-      if (import.meta.env.VITE_DEMO_MODE === 'true' || import.meta.env.DEV) {
-        // Auto-connexion avec le compte Denis admin
-        try {
-          const realResponse = await api.post('/auth/login', {
-            email: 'denis@mdmc-music-ads.com',
-            password: 'AdminPassword123!'
-          })
-
-          const { user, token, refreshToken } = realResponse.data
-
-          // Stocker les vrais tokens
-          Cookies.set('authToken', token, {
-            expires: credentials.rememberMe ? 7 : 1,
-            secure: import.meta.env.PROD,
-            sameSite: 'strict'
-          })
-
-          Cookies.set('refreshToken', refreshToken, {
-            expires: 7,
-            secure: import.meta.env.PROD,
-            sameSite: 'strict'
-          })
-
-          dispatch({
-            type: AUTH_ACTIONS.LOGIN_SUCCESS,
-            payload: { user, token }
-          })
-
-          toast.success(`Connexion automatique réussie ! Bienvenue ${user.firstName} !`)
-          return { success: true }
-        } catch (error) {
-          console.error('Auto-login failed, fallback to manual:', error)
-          // Si l'auto-login échoue, continuer avec la vraie API
-        }
-      }
-
-      // Mode production - vraie API
-      const response = await api.post('/auth/login', credentials)
+      // Utiliser authAPI pour l'authentification réelle
+      const response = await authAPI.login(credentials)
       const { user, token, refreshToken } = response.data
 
       // Stocker les tokens dans les cookies
@@ -235,11 +162,13 @@ export function AuthProvider({ children }) {
         sameSite: 'strict'
       })
 
-      Cookies.set('refreshToken', refreshToken, {
-        expires: 7, // 7 jours
-        secure: import.meta.env.PROD,
-        sameSite: 'strict'
-      })
+      if (refreshToken) {
+        Cookies.set('refreshToken', refreshToken, {
+          expires: 7, // 7 jours
+          secure: import.meta.env.PROD,
+          sameSite: 'strict'
+        })
+      }
 
       dispatch({
         type: AUTH_ACTIONS.LOGIN_SUCCESS,
@@ -250,7 +179,7 @@ export function AuthProvider({ children }) {
       return { success: true }
 
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Erreur de connexion'
+      const errorMessage = error.response?.data?.message || error.data?.message || 'Erreur de connexion'
 
       dispatch({
         type: AUTH_ACTIONS.LOGIN_FAILURE,
@@ -265,8 +194,8 @@ export function AuthProvider({ children }) {
   // Déconnexion
   const logout = async () => {
     try {
-      // Notifier le serveur
-      await api.post('/auth/logout')
+      // Notifier le serveur pour invalider le token
+      await authAPI.logout()
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
@@ -289,7 +218,7 @@ export function AuthProvider({ children }) {
         throw new Error('No refresh token')
       }
 
-      const response = await api.post('/auth/refresh', {
+      const response = await authAPI.refresh({
         refreshToken: refreshTokenValue
       })
 
@@ -302,11 +231,13 @@ export function AuthProvider({ children }) {
         sameSite: 'strict'
       })
 
-      Cookies.set('refreshToken', newRefreshToken, {
-        expires: 7,
-        secure: import.meta.env.PROD,
-        sameSite: 'strict'
-      })
+      if (newRefreshToken) {
+        Cookies.set('refreshToken', newRefreshToken, {
+          expires: 7,
+          secure: import.meta.env.PROD,
+          sameSite: 'strict'
+        })
+      }
 
       dispatch({
         type: AUTH_ACTIONS.REFRESH_TOKEN,
@@ -327,7 +258,7 @@ export function AuthProvider({ children }) {
     try {
       dispatch({ type: AUTH_ACTIONS.LOGIN_START })
 
-      const response = await api.post('/auth/register', userData)
+      const response = await authAPI.register(userData)
       const { user, token, refreshToken } = response.data
 
       // Stocker les tokens
@@ -337,11 +268,13 @@ export function AuthProvider({ children }) {
         sameSite: 'strict'
       })
 
-      Cookies.set('refreshToken', refreshToken, {
-        expires: 7,
-        secure: import.meta.env.PROD,
-        sameSite: 'strict'
-      })
+      if (refreshToken) {
+        Cookies.set('refreshToken', refreshToken, {
+          expires: 7,
+          secure: import.meta.env.PROD,
+          sameSite: 'strict'
+        })
+      }
 
       dispatch({
         type: AUTH_ACTIONS.LOGIN_SUCCESS,
@@ -352,7 +285,7 @@ export function AuthProvider({ children }) {
       return { success: true }
 
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Erreur lors de la création du compte'
+      const errorMessage = error.response?.data?.message || error.data?.message || 'Erreur lors de la création du compte'
 
       dispatch({
         type: AUTH_ACTIONS.LOGIN_FAILURE,

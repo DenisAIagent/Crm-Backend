@@ -3,7 +3,64 @@ import toast from 'react-hot-toast'
 import Cookies from 'js-cookie'
 
 // Configuration de base
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://api.mdmcmusicads.com'
+const IS_MOCK_MODE = import.meta.env.VITE_ENABLE_MOCK_API === 'true'
+
+// Mock data pour le mode frontend-only
+const mockData = {
+  user: {
+    id: '1',
+    firstName: 'Denis',
+    lastName: 'Adam',
+    email: 'denis@mdmc.fr',
+    role: 'admin',
+    team: 'management',
+    permissions: {
+      leads: { read: true, write: true, delete: true },
+      campaigns: { read: true, write: true, delete: true },
+      users: { read: true, write: true, delete: true },
+      analytics: { read: true, write: true, delete: true }
+    }
+  },
+  leads: [
+    {
+      _id: '1',
+      artistName: 'The Midnight Sound',
+      platform: 'Meta Ads',
+      status: 'new',
+      budget: 2500,
+      createdAt: new Date().toISOString()
+    },
+    {
+      _id: '2',
+      artistName: 'Echo Valley',
+      platform: 'Google Ads',
+      status: 'contacted',
+      budget: 1800,
+      createdAt: new Date().toISOString()
+    }
+  ],
+  campaigns: [
+    {
+      _id: '1',
+      name: 'Summer Music Festival',
+      platform: 'Meta Ads',
+      status: 'active',
+      budget: 5000,
+      spent: 2300,
+      createdAt: new Date().toISOString()
+    }
+  ]
+}
+
+// Fonction mock pour simuler des appels API
+const mockApiCall = (data, delay = 500) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({ data: data })
+    }, delay)
+  })
+}
 
 // Créer l'instance axios
 export const api = axios.create({
@@ -197,154 +254,484 @@ api.interceptors.response.use(
 // Leads API
 export const leadsAPI = {
   // Récupérer tous les leads
-  getAll: (params = {}) => api.get('/leads', { params }),
+  getAll: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ data: mockData.leads, total: mockData.leads.length })
+    }
+    return api.get('/leads', { params })
+  },
 
   // Récupérer un lead par ID
-  getById: (id) => api.get(`/leads/${id}`),
+  getById: (id) => {
+    if (IS_MOCK_MODE) {
+      const lead = mockData.leads.find(l => l._id === id)
+      return mockApiCall({ data: lead || null })
+    }
+    return api.get(`/leads/${id}`)
+  },
 
   // Créer un lead
-  create: (data) => api.post('/leads', data),
+  create: (data) => {
+    if (IS_MOCK_MODE) {
+      const newLead = {
+        _id: Date.now().toString(),
+        ...data,
+        createdAt: new Date().toISOString()
+      }
+      mockData.leads.push(newLead)
+      return mockApiCall({ data: newLead, message: 'Lead créé avec succès' })
+    }
+    return api.post('/leads', data)
+  },
 
   // Mettre à jour un lead
-  update: (id, data) => api.put(`/leads/${id}`, data),
+  update: (id, data) => {
+    if (IS_MOCK_MODE) {
+      const index = mockData.leads.findIndex(l => l._id === id)
+      if (index !== -1) {
+        mockData.leads[index] = { ...mockData.leads[index], ...data }
+        return mockApiCall({ data: mockData.leads[index], message: 'Lead mis à jour' })
+      }
+      return mockApiCall({ error: 'Lead non trouvé' }, 404)
+    }
+    return api.put(`/leads/${id}`, data)
+  },
 
   // Supprimer un lead
-  delete: (id) => api.delete(`/leads/${id}`),
+  delete: (id) => {
+    if (IS_MOCK_MODE) {
+      const index = mockData.leads.findIndex(l => l._id === id)
+      if (index !== -1) {
+        mockData.leads.splice(index, 1)
+        return mockApiCall({ message: 'Lead supprimé avec succès' })
+      }
+      return mockApiCall({ error: 'Lead non trouvé' }, 404)
+    }
+    return api.delete(`/leads/${id}`)
+  },
 
   // Ajouter une note
-  addNote: (id, data) => api.post(`/leads/${id}/notes`, data),
+  addNote: (id, data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Note ajoutée avec succès' })
+    }
+    return api.post(`/leads/${id}/notes`, data)
+  },
 
   // Programmer un suivi
-  scheduleFollowUp: (id, data) => api.post(`/leads/${id}/follow-ups`, data),
+  scheduleFollowUp: (id, data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Suivi programmé avec succès' })
+    }
+    return api.post(`/leads/${id}/follow-ups`, data)
+  },
 
   // Marquer un suivi comme terminé
-  completeFollowUp: (id, followUpId) => api.put(`/leads/${id}/follow-ups/${followUpId}/complete`),
+  completeFollowUp: (id, followUpId) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Suivi marqué comme terminé' })
+    }
+    return api.put(`/leads/${id}/follow-ups/${followUpId}/complete`)
+  },
 
   // Statistiques des leads
-  getStats: (params = {}) => api.get('/leads/stats/overview', { params }),
+  getStats: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({
+        total: mockData.leads.length,
+        new: mockData.leads.filter(l => l.status === 'new').length,
+        contacted: mockData.leads.filter(l => l.status === 'contacted').length,
+        qualified: mockData.leads.filter(l => l.status === 'qualified').length,
+        won: mockData.leads.filter(l => l.status === 'won').length,
+        lost: mockData.leads.filter(l => l.status === 'lost').length
+      })
+    }
+    return api.get('/leads/stats/overview', { params })
+  },
 
   // Export CSV
-  exportCSV: (params = {}) => api.get('/leads/export/csv', {
-    params,
-    responseType: 'blob'
-  }),
+  exportCSV: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      const csvContent = mockData.leads.map(lead =>
+        `${lead.artistName},${lead.platform},${lead.status},${lead.budget}`
+      ).join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      return Promise.resolve({ data: blob })
+    }
+    return api.get('/leads/export/csv', {
+      params,
+      responseType: 'blob'
+    })
+  },
 
   // Mise à jour en masse
-  bulkUpdate: (data) => api.patch('/leads/bulk', data)
+  bulkUpdate: (data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Mise à jour en masse effectuée' })
+    }
+    return api.patch('/leads/bulk', data)
+  }
 }
 
 // Campagnes API
 export const campaignsAPI = {
   // Récupérer toutes les campagnes
-  getAll: (params = {}) => api.get('/campaigns', { params }),
+  getAll: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ data: mockData.campaigns, total: mockData.campaigns.length })
+    }
+    return api.get('/campaigns', { params })
+  },
 
   // Récupérer une campagne par ID
-  getById: (id) => api.get(`/campaigns/${id}`),
+  getById: (id) => {
+    if (IS_MOCK_MODE) {
+      const campaign = mockData.campaigns.find(c => c._id === id)
+      return mockApiCall({ data: campaign || null })
+    }
+    return api.get(`/campaigns/${id}`)
+  },
 
   // Créer une campagne
-  create: (data) => api.post('/campaigns', data),
+  create: (data) => {
+    if (IS_MOCK_MODE) {
+      const newCampaign = {
+        _id: Date.now().toString(),
+        ...data,
+        createdAt: new Date().toISOString()
+      }
+      mockData.campaigns.push(newCampaign)
+      return mockApiCall({ data: newCampaign, message: 'Campagne créée avec succès' })
+    }
+    return api.post('/campaigns', data)
+  },
 
   // Mettre à jour une campagne
-  update: (id, data) => api.put(`/campaigns/${id}`, data),
+  update: (id, data) => {
+    if (IS_MOCK_MODE) {
+      const index = mockData.campaigns.findIndex(c => c._id === id)
+      if (index !== -1) {
+        mockData.campaigns[index] = { ...mockData.campaigns[index], ...data }
+        return mockApiCall({ data: mockData.campaigns[index], message: 'Campagne mise à jour' })
+      }
+      return mockApiCall({ error: 'Campagne non trouvée' }, 404)
+    }
+    return api.put(`/campaigns/${id}`, data)
+  },
 
   // Supprimer une campagne
-  delete: (id) => api.delete(`/campaigns/${id}`),
+  delete: (id) => {
+    if (IS_MOCK_MODE) {
+      const index = mockData.campaigns.findIndex(c => c._id === id)
+      if (index !== -1) {
+        mockData.campaigns.splice(index, 1)
+        return mockApiCall({ message: 'Campagne supprimée avec succès' })
+      }
+      return mockApiCall({ error: 'Campagne non trouvée' }, 404)
+    }
+    return api.delete(`/campaigns/${id}`)
+  },
 
   // Mettre à jour les KPIs
-  updateKPIs: (id, data) => api.post(`/campaigns/${id}/kpis`, data),
+  updateKPIs: (id, data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'KPIs mis à jour avec succès' })
+    }
+    return api.post(`/campaigns/${id}/kpis`, data)
+  },
 
   // Ajouter une optimisation
-  addOptimization: (id, data) => api.post(`/campaigns/${id}/optimizations`, data),
+  addOptimization: (id, data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Optimisation ajoutée avec succès' })
+    }
+    return api.post(`/campaigns/${id}/optimizations`, data)
+  },
 
   // Ajouter un feedback client
-  addFeedback: (id, data) => api.post(`/campaigns/${id}/feedback`, data),
+  addFeedback: (id, data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Feedback ajouté avec succès' })
+    }
+    return api.post(`/campaigns/${id}/feedback`, data)
+  },
 
   // Statistiques des campagnes
-  getStats: (params = {}) => api.get('/campaigns/stats/performance', { params }),
+  getStats: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({
+        totalCampaigns: mockData.campaigns.length,
+        activeCampaigns: mockData.campaigns.filter(c => c.status === 'active').length,
+        totalBudget: mockData.campaigns.reduce((sum, c) => sum + c.budget, 0),
+        totalSpent: mockData.campaigns.reduce((sum, c) => sum + (c.spent || 0), 0)
+      })
+    }
+    return api.get('/campaigns/stats/performance', { params })
+  },
 
   // Campagnes nécessitant une optimisation
-  getNeedingOptimization: () => api.get('/campaigns/optimization-needed'),
+  getNeedingOptimization: () => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ data: [] })
+    }
+    return api.get('/campaigns/optimization-needed')
+  },
 
   // Export CSV
-  exportCSV: (params = {}) => api.get('/campaigns/export/csv', {
-    params,
-    responseType: 'blob'
-  })
+  exportCSV: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      const csvContent = mockData.campaigns.map(campaign =>
+        `${campaign.name},${campaign.platform},${campaign.status},${campaign.budget}`
+      ).join('\n')
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      return Promise.resolve({ data: blob })
+    }
+    return api.get('/campaigns/export/csv', {
+      params,
+      responseType: 'blob'
+    })
+  }
 }
 
 // Analytics API
 export const analyticsAPI = {
   // Dashboard général
-  getDashboard: (params = {}) => api.get('/analytics/dashboard', { params }),
+  getDashboard: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({
+        totalRevenue: 125000,
+        totalLeads: 347,
+        activeCampaigns: 12,
+        conversionRate: 24.5
+      })
+    }
+    return api.get('/analytics/dashboard', { params })
+  },
 
   // Métriques temps réel
-  getRealtimeMetrics: (params = {}) => api.get('/analytics/realtime', { params }),
+  getRealtimeMetrics: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({
+        activeUsers: 23,
+        currentCampaigns: 8,
+        todayRevenue: 4250
+      })
+    }
+    return api.get('/analytics/realtime', { params })
+  },
 
   // Analytics des leads
-  getLeadsAnalytics: (params = {}) => api.get('/analytics/leads', { params }),
+  getLeadsAnalytics: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({
+        totalLeads: mockData.leads.length,
+        conversionRate: 24.5,
+        sources: {
+          'Meta Ads': 45,
+          'Google Ads': 32,
+          'Direct': 23
+        }
+      })
+    }
+    return api.get('/analytics/leads', { params })
+  },
 
   // Analytics des campagnes
-  getCampaignsAnalytics: (params = {}) => api.get('/analytics/campaigns', { params }),
+  getCampaignsAnalytics: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({
+        totalCampaigns: mockData.campaigns.length,
+        avgROI: 234.5,
+        topPlatform: 'Meta Ads'
+      })
+    }
+    return api.get('/analytics/campaigns', { params })
+  },
 
   // Comparaison des équipes
-  getTeamsComparison: (params = {}) => api.get('/analytics/teams', { params })
+  getTeamsComparison: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({
+        teams: [
+          { name: 'Marketing', leads: 45, revenue: 23000 },
+          { name: 'Sales', leads: 32, revenue: 18500 }
+        ]
+      })
+    }
+    return api.get('/analytics/teams', { params })
+  }
 }
 
 // Utilisateurs API
 export const usersAPI = {
   // Récupérer tous les utilisateurs
-  getAll: (params = {}) => api.get('/users', { params }),
+  getAll: (params = {}) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ data: [mockData.user], total: 1 })
+    }
+    return api.get('/users', { params })
+  },
 
   // Récupérer un utilisateur par ID
-  getById: (id) => api.get(`/users/${id}`),
+  getById: (id) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ data: mockData.user })
+    }
+    return api.get(`/users/${id}`)
+  },
 
   // Créer un utilisateur
-  create: (data) => api.post('/users', data),
+  create: (data) => {
+    if (IS_MOCK_MODE) {
+      const newUser = { _id: Date.now().toString(), ...data }
+      return mockApiCall({ data: newUser, message: 'Utilisateur créé avec succès' })
+    }
+    return api.post('/users', data)
+  },
 
   // Mettre à jour un utilisateur
-  update: (id, data) => api.put(`/users/${id}`, data),
+  update: (id, data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ data: { ...mockData.user, ...data }, message: 'Utilisateur mis à jour' })
+    }
+    return api.put(`/users/${id}`, data)
+  },
 
   // Supprimer un utilisateur
-  delete: (id) => api.delete(`/users/${id}`),
+  delete: (id) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Utilisateur supprimé avec succès' })
+    }
+    return api.delete(`/users/${id}`)
+  },
 
   // Mettre à jour les permissions
-  updatePermissions: (id, data) => api.put(`/users/${id}/permissions`, data),
+  updatePermissions: (id, data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Permissions mises à jour avec succès' })
+    }
+    return api.put(`/users/${id}/permissions`, data)
+  },
 
   // Réinitialiser le mot de passe
-  resetPassword: (id) => api.post(`/users/${id}/reset-password`),
+  resetPassword: (id) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Mot de passe réinitialisé avec succès' })
+    }
+    return api.post(`/users/${id}/reset-password`)
+  },
 
   // Statistiques utilisateur
-  getStats: (id) => api.get(`/users/${id}/stats`)
+  getStats: (id) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({
+        totalLogins: 127,
+        lastLogin: new Date().toISOString(),
+        leadsCreated: 23,
+        campaignsManaged: 5
+      })
+    }
+    return api.get(`/users/${id}/stats`)
+  }
 }
 
 // Authentification API
 export const authAPI = {
   // Connexion
-  login: (data) => api.post('/auth/login', data),
+  login: (data) => {
+    if (IS_MOCK_MODE) {
+      // Simulation de connexion réussie
+      const token = 'mock-jwt-token-' + Date.now()
+      const refreshToken = 'mock-refresh-token-' + Date.now()
+      return mockApiCall({
+        user: mockData.user,
+        token,
+        refreshToken,
+        message: 'Connexion réussie'
+      })
+    }
+    return api.post('/auth/login', data)
+  },
 
   // Inscription
-  register: (data) => api.post('/auth/register', data),
+  register: (data) => {
+    if (IS_MOCK_MODE) {
+      const token = 'mock-jwt-token-' + Date.now()
+      const refreshToken = 'mock-refresh-token-' + Date.now()
+      return mockApiCall({
+        user: { ...mockData.user, ...data },
+        token,
+        refreshToken,
+        message: 'Inscription réussie'
+      })
+    }
+    return api.post('/auth/register', data)
+  },
 
   // Déconnexion
-  logout: () => api.post('/auth/logout'),
+  logout: () => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Déconnexion réussie' })
+    }
+    return api.post('/auth/logout')
+  },
 
   // Profil actuel
-  me: () => api.get('/auth/me'),
+  me: () => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ user: mockData.user })
+    }
+    return api.get('/auth/me')
+  },
 
   // Rafraîchir le token
-  refresh: (data) => api.post('/auth/refresh', data),
+  refresh: (data) => {
+    if (IS_MOCK_MODE) {
+      const token = 'mock-jwt-token-refreshed-' + Date.now()
+      const refreshToken = 'mock-refresh-token-refreshed-' + Date.now()
+      return mockApiCall({ token, refreshToken })
+    }
+    return api.post('/auth/refresh', data)
+  },
 
   // Changer le mot de passe
-  changePassword: (data) => api.put('/auth/change-password', data),
+  changePassword: (data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Mot de passe changé avec succès' })
+    }
+    return api.put('/auth/change-password', data)
+  },
 
   // Mot de passe oublié
-  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  forgotPassword: (data) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Email de réinitialisation envoyé' })
+    }
+    return api.post('/auth/forgot-password', data)
+  },
 
   // Réinitialiser le mot de passe
-  resetPassword: (token, data) => api.post(`/auth/reset-password/${token}`, data),
+  resetPassword: (token, data) => {
+    if (IS_MOCK_MODE) {
+      const newToken = 'mock-jwt-token-reset-' + Date.now()
+      const refreshToken = 'mock-refresh-token-reset-' + Date.now()
+      return mockApiCall({
+        user: mockData.user,
+        token: newToken,
+        refreshToken,
+        message: 'Mot de passe réinitialisé'
+      })
+    }
+    return api.post(`/auth/reset-password/${token}`, data)
+  },
 
   // Vérifier l'email
-  verifyEmail: (token) => api.get(`/auth/verify-email/${token}`)
+  verifyEmail: (token) => {
+    if (IS_MOCK_MODE) {
+      return mockApiCall({ message: 'Email vérifié avec succès' })
+    }
+    return api.get(`/auth/verify-email/${token}`)
+  }
 }
 
 // Intégrations API

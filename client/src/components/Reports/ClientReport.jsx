@@ -348,7 +348,7 @@ function ClientReport({
                     </li>
                     <li className="flex items-start">
                       <span className="text-blue-600 mr-2">•</span>
-                      Augmenter le budget sur les plateformes performantes (CTR > 3%)
+                      Augmenter le budget sur les plateformes performantes (CTR &gt; 3%)
                     </li>
                     <li className="flex items-start">
                       <span className="text-blue-600 mr-2">•</span>

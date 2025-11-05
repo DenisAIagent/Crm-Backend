@@ -33,17 +33,7 @@ function LoginPage() {
 
   const from = location.state?.from?.pathname || '/dashboard'
 
-  // Auto-fill demo data if demo parameter is present
-  useEffect(() => {
-    const urlParams = new URLSearchParams(location.search)
-    if (urlParams.get('demo') === 'true') {
-      setFormData({
-        email: 'denis@mdmc.fr',
-        password: 'password123',
-        rememberMe: true
-      })
-    }
-  }, [location.search])
+  // Removed auto-fill demo functionality for production
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -92,26 +82,13 @@ function LoginPage() {
     setIsLoading(true)
 
     try {
-      // Simulate API call with realistic delay
-      await new Promise(resolve => setTimeout(resolve, 1200))
+      const result = await login(formData)
 
-      // Demo authentication
-      if (formData.email === 'denis@mdmc.fr' && formData.password === 'password123') {
-        const userData = {
-          id: 1,
-          firstName: 'Denis',
-          lastName: 'Adam',
-          email: 'denis@mdmc.fr',
-          role: 'admin',
-          permissions: ['read', 'write', 'delete', 'admin'],
-          team: 'direction'
-        }
-
-        await login(userData, formData.rememberMe)
+      if (result.success) {
         navigate(from, { replace: true })
       } else {
         setErrors({
-          submit: 'Email ou mot de passe incorrect'
+          submit: result.error || 'Email ou mot de passe incorrect'
         })
       }
     } catch (error) {
@@ -131,13 +108,7 @@ function LoginPage() {
     initiateGoogleLogin()
   }
 
-  const fillDemoCredentials = () => {
-    setFormData({
-      email: 'denis@mdmc.fr',
-      password: 'password123',
-      rememberMe: true
-    })
-  }
+  // Removed demo functionality for production
 
   return (
     <>
@@ -249,28 +220,6 @@ function LoginPage() {
                 </p>
               </div>
 
-              {/* Demo info */}
-              <div className="mb-4 md:mb-6 p-3 md:p-4 bg-red-600/10 border border-red-600/20 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center mb-2">
-                      <MusicalNoteIcon className="w-4 h-4 text-red-400 mr-2" />
-                      <span className="text-sm font-medium text-red-400">Compte de démonstration</span>
-                    </div>
-                    <div className="text-xs md:text-sm text-gray-300">
-                      <code className="bg-gray-800 px-2 py-1 rounded text-red-400 mr-2">denis@mdmc.fr</code>
-                      <code className="bg-gray-800 px-2 py-1 rounded text-red-400">password123</code>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={fillDemoCredentials}
-                    className="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded transition-colors"
-                  >
-                    Remplir
-                  </button>
-                </div>
-              </div>
 
               <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
                 {/* Global error */}

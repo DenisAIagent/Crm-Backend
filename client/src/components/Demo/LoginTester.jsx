@@ -43,8 +43,8 @@ function LoginTester({ formManager, isVisible = true }) {
     triggerEffect
   } = useMusicAnimations()
 
-  // Afficher seulement en mode demo/dev
-  if (!demoMode || !isVisible) {
+  // DISABLED FOR PRODUCTION - Never show in production
+  if (!demoMode || !isVisible || import.meta.env.VITE_NODE_ENV === 'production') {
     return null
   }
 
