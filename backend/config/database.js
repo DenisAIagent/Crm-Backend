@@ -8,6 +8,12 @@ const connectDB = async () => {
                      process.env.DATABASE_URL || 
                      'mongodb://localhost:27017/mdmc-crm';
 
+    // Log which variable was used (without exposing credentials)
+    const usedVar = process.env.MONGODB_URI ? 'MONGODB_URI' : 
+                    process.env.MONGO_URL ? 'MONGO_URL' : 
+                    process.env.DATABASE_URL ? 'DATABASE_URL' : 'default';
+    console.log(`🔌 Using MongoDB connection from: ${usedVar}`);
+
     const conn = await mongoose.connect(mongoURI, {
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
