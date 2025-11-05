@@ -1,8 +1,14 @@
 # MDMC Music Ads CRM - Mode Frontend-Only
 
+> **⚠️ ATTENTION : CE REPOSITORY EST UNIQUEMENT FRONTEND ⚠️**
+> 
+> **🚫 NE JAMAIS AJOUTER DE CODE BACKEND ICI 🚫**
+
 ## 🎯 **Projet nettoyé et optimisé pour être 100% frontend**
 
 Ce projet a été complètement nettoyé pour éliminer toutes les dépendances backend inappropriées et fonctionne désormais en mode **frontend-only** avec des données simulées.
+
+**⚠️ RÈGLE STRICTE : Tout code backend doit être dans un repository séparé !**
 
 ## ✅ **Nettoyage effectué**
 
