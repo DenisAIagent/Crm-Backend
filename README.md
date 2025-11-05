@@ -1,6 +1,34 @@
-# MDMC Music Ads CRM
+# MDMC Music Ads CRM - Monorepo
 
 🎵 **CRM complet pour agences de marketing musical** - Gestion des leads, campagnes et analytics en temps réel.
+
+## 📁 Structure du Projet
+
+```
+📦 MDMC_CRM_Monorepo/
+├── 🖥️  frontend/          # Application React/Vite
+│   ├── src/               # Code source React
+│   ├── public/            # Assets statiques
+│   ├── package.json       # Dépendances frontend
+│   └── Dockerfile         # Build frontend pour Railway
+│
+├── 🔧  backend/           # API Node.js/Express
+│   ├── controllers/       # Logique métier
+│   ├── models/           # Modèles MongoDB
+│   ├── routes/           # Endpoints API
+│   ├── middleware/       # Auth & validation
+│   ├── config/           # Configuration DB
+│   ├── scripts/          # Scripts de seeding
+│   ├── server.js         # Serveur Express
+│   ├── package.json      # Dépendances backend
+│   └── Dockerfile        # Build backend pour Railway
+│
+├── 🐳  docker/            # Configuration Docker commune
+│   ├── nginx.conf        # Configuration Nginx
+│   └── start.sh          # Script de démarrage
+│
+└── 📚  docs/              # Documentation globale
+```
 
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-18+-blue.svg)](https://reactjs.org/)

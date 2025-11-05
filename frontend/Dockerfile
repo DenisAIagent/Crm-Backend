@@ -11,14 +11,13 @@ ENV NODE_ENV=production
 ENV GENERATE_SOURCEMAP=false
 
 # Copier les fichiers de dépendances
-COPY client/package*.json ./client/
+COPY package*.json ./
 
-# Installer les dépendances du client (y compris devDependencies pour le build)
-WORKDIR /app/client
+# Installer les dépendances (y compris devDependencies pour le build)
 RUN npm ci --include=dev
 
-# Copier le code source du client
-COPY client/ ./
+# Copier le code source
+COPY . ./
 
 # Clean build pour éviter les incohérences de cache
 RUN rm -rf dist .vite node_modules/.vite
@@ -40,13 +39,13 @@ LABEL description="CRM Frontend - Production Ready"
 LABEL version="1.0.0"
 
 # Copier les fichiers buildés depuis le stage builder
-COPY --from=builder /app/client/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copier la configuration Nginx personnalisée
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY ../docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copier le script d'entrée pour Railway
-COPY docker/start.sh /start.sh
+COPY ../docker/start.sh /start.sh
 RUN chmod +x /start.sh
 
 # Ajuster les permissions (utiliser l'utilisateur nginx existant)
