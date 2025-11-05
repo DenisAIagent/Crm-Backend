@@ -1,17 +1,21 @@
 # ============================================
-# Stage 1: Build du client React/Vite
-# Force Railway cache invalidation - Build 2025-11-01
+# Dockerfile Frontend-Only pour Railway
+# Dépôt: Crm-Frontend
 # ============================================
-FROM node:20-alpine AS client-builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copier les fichiers de configuration du client
+# Variables d'environnement pour le build
+ENV NODE_ENV=production
+ENV GENERATE_SOURCEMAP=false
+
+# Copier les fichiers de dépendances
 COPY client/package*.json ./client/
 
-# Installer les dépendances du client
+# Installer les dépendances du client (y compris devDependencies pour le build)
 WORKDIR /app/client
-RUN npm ci
+RUN npm ci --include=dev
 
 # Copier le code source du client
 COPY client/ ./
@@ -19,44 +23,45 @@ COPY client/ ./
 # Clean build pour éviter les incohérences de cache
 RUN rm -rf dist .vite node_modules/.vite
 
-# Build du client (génère /app/client/dist)
+# Build de l'application React
 RUN npm run build
 
-# Debug: Lister les fichiers buildés pour vérifier les hashs
-RUN echo "=== DEBUG: Fichiers buildés ===" && \
-    ls -la dist/assets/ && \
-    echo "=== HTML content ===" && \
-    cat dist/index.html
-
 # ============================================
-# Stage 2: Image de production finale
+# Stage 2: Image de production avec Nginx
 # ============================================
-FROM node:20-alpine
+FROM nginx:1.25-alpine AS production
 
-WORKDIR /app
+# Installer curl pour le healthcheck
+RUN apk add --no-cache curl
 
-# Copier le package.json racine pour les dépendances du serveur
-COPY package*.json ./
+# Métadonnées
+LABEL maintainer="MDMC Music Ads"
+LABEL description="CRM Frontend - Production Ready"
+LABEL version="1.0.0"
 
-# Installer UNIQUEMENT les dépendances de production du serveur
-RUN npm ci --only=production
+# Copier les fichiers buildés depuis le stage builder
+COPY --from=builder /app/client/dist /usr/share/nginx/html
 
-# Copier le code du serveur
-COPY server/ ./server/
+# Copier la configuration Nginx personnalisée
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copier le build du client depuis le stage précédent
-COPY --from=client-builder /app/client/dist ./client/dist
+# Ajuster les permissions (utiliser l'utilisateur nginx existant)
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d
 
-# Variables d'environnement par défaut
-ENV NODE_ENV=production
-ENV PORT=3000
+# Note: Nginx doit démarrer en tant que root pour écouter sur le port 80
+# Les processus workers seront automatiquement exécutés en tant que nginx
+# Pas besoin de USER nginx ici
 
 # Exposer le port
-EXPOSE 3000
+EXPOSE 80
 
-# Health check pour Railway
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Health check pour Railway (utilise /health endpoint de nginx)
+# Utiliser curl au lieu de wget (plus fiable dans Alpine)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:80/health || exit 1
 
-# Démarrer directement le serveur (plus de start.sh nécessaire)
-CMD ["node", "server/server.js"]
+# Commande de démarrage
+CMD ["nginx", "-g", "daemon off;"]

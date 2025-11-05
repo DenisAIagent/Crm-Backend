@@ -1,7 +1,6 @@
 # Dependencies
 node_modules/
 client/node_modules/
-server/node_modules/
 
 # Production builds
 client/dist/
@@ -17,9 +16,6 @@ build/
 
 # Sensitive files
 ADMIN_CREDENTIALS.txt
-create-admin-user.js
-create-secure-admin.js
-fix-admin-user.js
 
 # Database
 *.db
