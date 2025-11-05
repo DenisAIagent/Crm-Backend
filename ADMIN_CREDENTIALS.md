@@ -19,7 +19,7 @@
 
 ### **URL de connexion :**
 ```
-https://crm-frontend2-production.up.railway.app/login
+https://adminpanel.mdmcmusicads.com/login
 ```
 
 ### **Données de test pour développement :**
@@ -55,7 +55,7 @@ https://crm-frontend2-production.up.railway.app/login
 
 ## 📋 Instructions de Première Connexion
 
-1. **Accéder à l'URL :** https://crm-frontend2-production.up.railway.app/login
+1. **Accéder à l'URL :** https://adminpanel.mdmcmusicads.com/login
 2. **Saisir les identifiants admin** ci-dessus
 3. **Valider la connexion**
 4. **Configurer votre profil** (photo, préférences)
@@ -106,4 +106,4 @@ Pour que ces identifiants fonctionnent, votre API backend doit :
 ---
 
 **📞 Support :** support@mdmc.fr
-**🌐 Application :** https://crm-frontend2-production.up.railway.app
+**🌐 Application :** https://adminpanel.mdmcmusicads.com
