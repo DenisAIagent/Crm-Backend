@@ -42,10 +42,10 @@ LABEL version="1.0.0"
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Copier la configuration Nginx personnalisée
-COPY ../docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
 # Copier le script d'entrée pour Railway
-COPY ../docker/start.sh /start.sh
+COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh
 
 # Ajuster les permissions (utiliser l'utilisateur nginx existant)
