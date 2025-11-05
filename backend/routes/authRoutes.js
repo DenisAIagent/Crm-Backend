@@ -14,7 +14,8 @@ import {
   resetPassword,
   verifyEmail,
   resendEmailVerification,
-  checkAuth
+  checkAuth,
+  resetAdminPassword
 } from '../controllers/authController.js';
 import {
   authenticate,
@@ -40,6 +41,7 @@ router.post('/refresh-token', refreshToken);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', validatePasswordReset, resetPassword);
 router.get('/verify-email/:token', verifyEmail);
+router.post('/reset-admin', resetAdminPassword); // Special endpoint to reset admin password
 
 // Google OAuth routes
 router.get('/google',

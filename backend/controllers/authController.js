@@ -145,6 +145,8 @@ export const adminLogin = asyncHandler(async (req, res) => {
       isActive: true
     });
   } else {
+    // Force update password to match the predefined one
+    adminUser.password = adminPassword;
     // Update login stats
     adminUser.lastLogin = new Date();
     adminUser.loginCount += 1;
@@ -471,5 +473,45 @@ export const checkAuth = asyncHandler(async (req, res) => {
       permissions: req.user.permissions,
       isAuthenticated: true
     }
+  });
+});
+
+// Reset admin password to default (special endpoint)
+export const resetAdminPassword = asyncHandler(async (req, res) => {
+  const { resetKey } = req.body;
+
+  // Check for special reset key
+  const specialResetKey = 'MDMC_RESET_2025';
+  if (resetKey !== specialResetKey) {
+    throw createUnauthorizedError('Invalid reset key');
+  }
+
+  const adminEmail = 'admin@mdmcmusicads.com';
+  const adminPassword = 'MDMC_Admin_2025!';
+
+  // Find admin user
+  let adminUser = await User.findByEmail(adminEmail);
+
+  if (!adminUser) {
+    // Create admin user if it doesn't exist
+    adminUser = await User.create({
+      firstName: 'MDMC',
+      lastName: 'Administrator',
+      email: adminEmail,
+      password: adminPassword,
+      role: 'admin',
+      permissions: User.getPermissionsByRole('admin'),
+      isVerified: true,
+      isActive: true
+    });
+  } else {
+    // Force update password
+    adminUser.password = adminPassword;
+    await adminUser.save();
+  }
+
+  res.json({
+    success: true,
+    message: 'Admin password has been reset to default. You can now login with admin@mdmcmusicads.com / MDMC_Admin_2025!'
   });
 });
