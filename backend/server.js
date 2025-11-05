@@ -43,6 +43,48 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+// CORS configuration for production - MUST BE BEFORE OTHER MIDDLEWARES
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'https://adminpanel.mdmcmusicads.com',
+      'https://mdmcmusicads.com',
+      'https://www.mdmcmusicads.com',
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'http://localhost:4173'
+    ];
+
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Request-Method',
+    'Access-Control-Request-Headers'
+  ],
+  exposedHeaders: ['Authorization'],
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
+// Apply CORS first, before rate limiting
+app.use(cors(corsOptions));
+
 // Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -56,33 +98,7 @@ app.use(helmet({
   },
 }));
 
-// CORS configuration for production
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      'https://adminpanel.mdmcmusicads.com',
-      'https://mdmcmusicads.com',
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'http://localhost:4173'
-    ];
-
-    // Allow requests with no origin (mobile apps, etc.)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  maxAge: 86400 // 24 hours
-};
-
-app.use(cors(corsOptions));
+// Rate limiting - applied after CORS
 app.use(limiter);
 app.use(compression());
 app.use(mongoSanitize());
