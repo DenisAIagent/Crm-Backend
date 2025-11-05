@@ -10,7 +10,8 @@ import {
   asyncHandler,
   createValidationError,
   createNotFoundError,
-  createUnauthorizedError
+  createUnauthorizedError,
+  createInternalServerError
 } from '../middleware/errorMiddleware.js';
 
 // Register new user

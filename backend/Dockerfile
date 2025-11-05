@@ -5,11 +5,22 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
-COPY package-lock.json ./
+# Copy package files (Railway may use package-backend.json)
+COPY package*.json ./
+COPY package-lock.json* ./
+# If package-backend.json exists, use it as package.json
+RUN if [ -f package-backend.json ]; then \
+      cp package-backend.json package.json; \
+    fi
 
 # Install dependencies
-RUN npm ci --omit=dev && npm cache clean --force
+# Use npm ci if lockfile exists, otherwise use npm install
+RUN if [ -f package-lock.json ]; then \
+      npm ci --omit=dev && npm cache clean --force; \
+    else \
+      echo "Lockfile not found, using npm install..." && \
+      npm install --omit=dev && npm cache clean --force; \
+    fi
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs
